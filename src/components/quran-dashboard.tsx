@@ -65,8 +65,9 @@ export function QuranDashboard({ initialData }: Props) {
     const absoluteRow = rowIndex + 3;
     const cell = `${columnLetter(columnIndex)}${absoluteRow}`;
     const next = data.values.map((row) => [...row]);
-    if (!next[rowIndex + 2]) next[rowIndex + 2] = [];
-    next[rowIndex + 2][columnIndex] = value;
+    const targetRow = next[rowIndex + 2] ?? [];
+    targetRow[columnIndex] = value;
+    next[rowIndex + 2] = targetRow;
     setData({ ...data, values: next });
     setSavingCell(cell);
     setSavedCell(null);
@@ -121,7 +122,7 @@ export function QuranDashboard({ initialData }: Props) {
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div><div className="flex items-center gap-2"><span className="size-2 rounded-full bg-success" /><p className="text-sm text-muted-foreground">دفتر مفتوح</p></div><h2 className="mt-1 text-xl font-black">{data.activeSheet}</h2></div>
-            <div className="flex gap-2"><div className="relative min-w-0 flex-1 sm:w-72"><Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن طالب أو ملاحظة..." className="h-10 pr-10" /></div><DropdownMenu dir="rtl"><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="تخصيص الأعمدة"><Columns3 /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><p className="px-2 py-1.5 text-xs text-muted-foreground">الأعمدة الظاهرة</p>{labels.map((label, index) => <DropdownMenuCheckboxItem key={index} checked={visible[index]} onCheckedChange={(checked) => setVisible((current) => current.map((value, itemIndex) => itemIndex === index ? Boolean(checked) : value))}>{label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></div>
+            <div className="flex gap-2"><div className="relative min-w-0 flex-1 sm:w-72"><Search className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن طالب أو ملاحظة..." className="h-10 pr-10" /></div><DropdownMenu dir="rtl"><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="تخصيص الأعمدة"><Columns3 /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48"><p className="px-2 py-1.5 text-xs text-muted-foreground">الأعمدة الظاهرة</p>{labels.map((label, index) => <DropdownMenuCheckboxItem key={index} checked={Boolean(visible[index])} onCheckedChange={(checked) => setVisible((current) => current.map((value, itemIndex) => itemIndex === index ? Boolean(checked) : value))}>{label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu></div>
           </div>
 
           <div className="notebook mt-5">
