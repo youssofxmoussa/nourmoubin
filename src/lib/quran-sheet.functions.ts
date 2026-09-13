@@ -82,3 +82,25 @@ export const appendQuranStudent = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+export const addQuranStudentRow = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        sheet: z.string().min(1).max(100),
+        values: z.array(z.string().max(1000)).min(1).max(9),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const current = await loadSheet(data.sheet);
+    const nextNumber = Math.max(0, ...current.values.slice(2).map((row) => Number(row?.[0]) || 0)) + 1;
+    const row = Array.from({ length: 9 }, (_, index) => data.values[index] ?? "");
+    row[0] = String(nextNumber);
+    const range = `${quoteSheet(data.sheet)}!A:I`;
+    await request(`/spreadsheets/${SPREADSHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
+      method: "POST",
+      body: JSON.stringify({ range, majorDimension: "ROWS", values: [row] }),
+    });
+    return { ok: true, number: nextNumber };
+  });
