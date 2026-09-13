@@ -24,7 +24,14 @@ import {
 import { appendQuranStudent, getQuranSheet, updateQuranCell } from "@/lib/quran-sheet.functions";
 
 type Workbook = Awaited<ReturnType<typeof getQuranSheet>>;
-type Props = { initialData: Workbook };
+type Props = { initialData?: Workbook | null };
+
+const EMPTY_WORKBOOK = {
+  title: "سجل طلاب القرآن",
+  sheets: [] as string[],
+  activeSheet: "",
+  values: [] as string[][],
+};
 
 const columnLetter = (index: number) => String.fromCharCode(65 + index);
 
@@ -32,7 +39,7 @@ export function QuranDashboard({ initialData }: Props) {
   const loadSheet = useServerFn(getQuranSheet);
   const saveCell = useServerFn(updateQuranCell);
   const appendStudent = useServerFn(appendQuranStudent);
-  const [data, setData] = useState(initialData);
+  const [data, setData] = useState<Workbook>((initialData ?? EMPTY_WORKBOOK) as Workbook);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,14 +47,15 @@ export function QuranDashboard({ initialData }: Props) {
   const [savedCell, setSavedCell] = useState<string | null>(null);
   const [visible, setVisible] = useState<boolean[]>(Array(9).fill(true));
 
-  const headings = data.values[0]?.slice(0, 9) ?? [];
-  const subheadings = data.values[1]?.slice(0, 9) ?? [];
+  const values = data?.values ?? [];
+  const headings = values[0]?.slice(0, 9) ?? [];
+  const subheadings = values[1]?.slice(0, 9) ?? [];
   const labels = headings.map((heading, index) => heading || subheadings[index] || `عمود ${index + 1}`);
   const rows = useMemo(() => {
-    const all = data.values.slice(2).filter((row) => row.some((cell) => String(cell ?? "").trim()));
+    const all = values.slice(2).filter((row) => row.some((cell) => String(cell ?? "").trim()));
     if (!query.trim()) return all;
     return all.filter((row) => row.some((cell) => String(cell ?? "").includes(query.trim())));
-  }, [data.values, query]);
+  }, [values, query]);
 
   async function chooseSheet(sheet: string) {
     if (sheet === data.activeSheet) return;
