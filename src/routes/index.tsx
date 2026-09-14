@@ -6,7 +6,11 @@ import { getQuranSheet } from "@/lib/quran-sheet.functions";
 // __root.tsx, and ships no og:image so serve-time hosting can inject the
 // project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  loader: () => getQuranSheet({ data: {} }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    sheet: typeof search["sheet"] === "string" ? search["sheet"] : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ sheet: search.sheet }),
+  loader: ({ deps }) => getQuranSheet({ data: { sheet: deps.sheet } }),
   head: () => ({
     meta: [
       { title: "سجل طلاب القرآن | النور المبين" },
