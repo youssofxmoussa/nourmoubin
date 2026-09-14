@@ -17,7 +17,7 @@ import { addQuranStudentRow, getQuranSheet } from "@/lib/quran-sheet.functions";
 
 export const Route = createFileRoute("/students/new")({
   validateSearch: (search: Record<string, unknown>) => ({
-    sheet: typeof search.sheet === "string" ? search.sheet : undefined,
+    sheet: typeof search["sheet"] === "string" ? search["sheet"] : undefined,
   }),
   loaderDeps: ({ search }) => ({ sheet: search.sheet }),
   loader: ({ deps }) => getQuranSheet({ data: { sheet: deps.sheet } }),

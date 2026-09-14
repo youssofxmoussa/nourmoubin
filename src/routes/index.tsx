@@ -7,7 +7,7 @@ import { getQuranSheet } from "@/lib/quran-sheet.functions";
 // project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>) => ({
-    sheet: typeof search.sheet === "string" ? search.sheet : undefined,
+    sheet: typeof search["sheet"] === "string" ? search["sheet"] : undefined,
   }),
   loaderDeps: ({ search }) => ({ sheet: search.sheet }),
   loader: ({ deps }) => getQuranSheet({ data: { sheet: deps.sheet } }),
