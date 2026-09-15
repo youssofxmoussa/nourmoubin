@@ -101,20 +101,8 @@ export const updateQuranCell = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// الجدول يبدأ من الصف 3، وعمود «الرقم» معبّأ مسبقاً بأرقام متسلسلة.
-// نكتب الطالب داخل أول خانة فاضية ضمن الجدول بدل الإضافة تحته.
-function tableEndRow(values: string[][]) {
-  let end = 2; // فهرس آخر صف ضمن الجدول (0-based)، 2 = الصف 3
-  let expected = 1;
-  for (let index = 2; index < values.length; index += 1) {
-    const number = Number(String(values[index]?.[0] ?? "").trim());
-    if (number !== expected) break;
-    end = index;
-    expected += 1;
-  }
-  return Math.max(end, 2);
-}
-
+// الجدول يبدأ من الصف 3، والخانات تبقى فاضية حتى يُضاف طالب.
+// كل طالب جديد يأخذ الرقم التالي (1، 2، 3...) وينكتب في أول صف فاضي.
 export const addQuranStudentRow = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
@@ -128,16 +116,17 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const current = await loadSheet(data.sheet, { fresh: true });
     const values = current.values;
-    const end = tableEndRow(values);
     let target = -1;
-    for (let index = 2; index <= end; index += 1) {
-      if (!String(values[index]?.[1] ?? "").trim()) {
+    let count = 0;
+    for (let index = 2; index < Math.max(values.length, 3); index += 1) {
+      if (String(values[index]?.[1] ?? "").trim()) {
+        count += 1;
+      } else if (target === -1) {
         target = index;
-        break;
       }
     }
-    if (target === -1) target = end + 1;
-    const number = target - 1;
+    if (target === -1) target = Math.max(values.length, 2);
+    const number = count + 1;
     const row = Array.from({ length: 9 }, (_, index) => data.values[index] ?? "");
     row[0] = String(number);
     const rowNumber = target + 1;
