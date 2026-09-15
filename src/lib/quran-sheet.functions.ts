@@ -126,7 +126,7 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
       .parse(data),
   )
   .handler(async ({ data }) => {
-    const current = await loadSheet(data.sheet);
+    const current = await loadSheet(data.sheet, { fresh: true });
     const values = current.values;
     const end = tableEndRow(values);
     let target = -1;
