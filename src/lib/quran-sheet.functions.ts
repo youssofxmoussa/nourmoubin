@@ -97,6 +97,7 @@ export const updateQuranCell = createServerFn({ method: "POST" })
       method: "PUT",
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [[data.value]] }),
     });
+    cache.clear();
     return { ok: true };
   });
 
