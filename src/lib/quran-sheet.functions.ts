@@ -17,21 +17,49 @@ function headers() {
   };
 }
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Google Sheets يحدّ عدد الطلبات في الدقيقة، لذلك نعيد المحاولة تدريجياً عند 429/5xx.
 async function request(path: string, init?: RequestInit) {
-  const response = await fetch(`${GATEWAY_URL}${path}`, { ...init, headers: headers() });
-  if (!response.ok) {
+  let lastStatus = 0;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const response = await fetch(`${GATEWAY_URL}${path}`, { ...init, headers: headers() });
+    if (response.ok) return response.json();
+    lastStatus = response.status;
     const detail = await response.text();
     console.error(`Google Sheets request failed [${response.status}]: ${detail}`);
-    throw new Error(`تعذّر الوصول إلى الجدول (${response.status})`);
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 3) break;
+    const retryAfter = Number(response.headers.get("retry-after"));
+    await wait(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 600 * 2 ** attempt);
   }
-  return response.json();
+  throw new Error(`تعذّر الوصول إلى الجدول (${lastStatus})`);
 }
 
 function quoteSheet(name: string) {
   return `'${name.replaceAll("'", "''")}'`;
 }
 
-async function loadSheet(sheet?: string) {
+type Workbook = { title: string; sheets: string[]; activeSheet: string; values: string[][] };
+const cache = new Map<string, { at: number; data: Workbook }>();
+const CACHE_MS = 20_000;
+
+async function loadSheet(sheet?: string, options?: { fresh?: boolean }): Promise<Workbook> {
+  const key = sheet ?? "";
+  const cached = cache.get(key);
+  if (!options?.fresh && cached && Date.now() - cached.at < CACHE_MS) return cached.data;
+  try {
+    const data = await fetchSheet(sheet);
+    cache.set(key, { at: Date.now(), data });
+    return data;
+  } catch (error) {
+    // عند تجاوز حدّ الطلبات نعرض آخر نسخة محفوظة بدل صفحة خطأ.
+    if (cached) return cached.data;
+    throw error;
+  }
+}
+
+async function fetchSheet(sheet?: string): Promise<Workbook> {
   const metadata = (await request(`/spreadsheets/${SPREADSHEET_ID}?includeGridData=false`)) as {
     properties?: { title?: string };
     sheets?: SheetMeta[];
