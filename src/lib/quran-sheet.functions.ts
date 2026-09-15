@@ -72,6 +72,20 @@ export const updateQuranCell = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// الجدول يبدأ من الصف 3، وعمود «الرقم» معبّأ مسبقاً بأرقام متسلسلة.
+// نكتب الطالب داخل أول خانة فاضية ضمن الجدول بدل الإضافة تحته.
+function tableEndRow(values: string[][]) {
+  let end = 2; // فهرس آخر صف ضمن الجدول (0-based)، 2 = الصف 3
+  let expected = 1;
+  for (let index = 2; index < values.length; index += 1) {
+    const number = Number(String(values[index]?.[0] ?? "").trim());
+    if (number !== expected) break;
+    end = index;
+    expected += 1;
+  }
+  return Math.max(end, 2);
+}
+
 export const addQuranStudentRow = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z
@@ -84,13 +98,24 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const current = await loadSheet(data.sheet);
-    const nextNumber = Math.max(0, ...current.values.slice(2).map((row) => Number(row?.[0]) || 0)) + 1;
+    const values = current.values;
+    const end = tableEndRow(values);
+    let target = -1;
+    for (let index = 2; index <= end; index += 1) {
+      if (!String(values[index]?.[1] ?? "").trim()) {
+        target = index;
+        break;
+      }
+    }
+    if (target === -1) target = end + 1;
+    const number = target - 1;
     const row = Array.from({ length: 9 }, (_, index) => data.values[index] ?? "");
-    row[0] = String(nextNumber);
-    const range = `${quoteSheet(data.sheet)}!A:I`;
-    await request(`/spreadsheets/${SPREADSHEET_ID}/values/${range}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`, {
-      method: "POST",
+    row[0] = String(number);
+    const rowNumber = target + 1;
+    const range = `${quoteSheet(data.sheet)}!A${rowNumber}:I${rowNumber}`;
+    await request(`/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`, {
+      method: "PUT",
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [row] }),
     });
-    return { ok: true, number: nextNumber };
+    return { ok: true, number };
   });
