@@ -146,5 +146,6 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
       method: "PUT",
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [row] }),
     });
+    cache.clear();
     return { ok: true, number };
   });
