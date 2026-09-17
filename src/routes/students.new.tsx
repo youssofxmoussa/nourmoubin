@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, BookOpenText, Camera, Check, ImagePlus, LoaderCircle, Trash2, UserRoundPlus } from "lucide-react";
+import { ArrowRight, BookOpenText, Camera, Check, ImagePlus, LoaderCircle, Move, Trash2, UserRoundPlus, ZoomIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -15,17 +17,33 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { addQuranStudentRow, getQuranSheet, saveQuranStudentPhoto } from "@/lib/quran-sheet.functions";
 
-async function preparePhoto(file: File) {
+async function readPhoto(file: File) {
   if (!file.type.startsWith("image/")) throw new Error("اختر ملف صورة");
-  const source = await createImageBitmap(file);
-  const maxSide = 900;
-  const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("تعذّرت قراءة الصورة"));
+    reader.onerror = () => reject(new Error("تعذّرت قراءة الصورة"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function cropPhoto(sourceUrl: string, zoom: number, offsetX: number, offsetY: number) {
+  const source = await createImageBitmap(await (await fetch(sourceUrl)).blob());
+  const outputSize = 800;
   const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(source.width * scale));
-  canvas.height = Math.max(1, Math.round(source.height * scale));
+  canvas.width = outputSize;
+  canvas.height = outputSize;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("تعذّرت معالجة الصورة");
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const baseScale = Math.max(outputSize / source.width, outputSize / source.height);
+  const scale = baseScale * zoom;
+  const width = source.width * scale;
+  const height = source.height * scale;
+  const travelX = Math.max(0, (width - outputSize) / 2);
+  const travelY = Math.max(0, (height - outputSize) / 2);
+  const x = (outputSize - width) / 2 + (offsetX / 100) * travelX;
+  const y = (outputSize - height) / 2 + (offsetY / 100) * travelY;
+  context.drawImage(source, x, y, width, height);
   source.close();
   return canvas.toDataURL("image/jpeg", 0.78);
 }
@@ -62,6 +80,11 @@ function NewStudentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState("");
+  const [cropSource, setCropSource] = useState("");
+  const [cropSize, setCropSize] = useState({ width: 1, height: 1 });
+  const [cropZoom, setCropZoom] = useState(1);
+  const [cropX, setCropX] = useState(0);
+  const [cropY, setCropY] = useState(0);
   const [photoBusy, setPhotoBusy] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -81,13 +104,39 @@ function NewStudentPage() {
     setPhotoBusy(true);
     setError("");
     try {
-      setPhoto(await preparePhoto(file));
+      setCropSource(await readPhoto(file));
+      const dimensions = await createImageBitmap(file);
+      setCropSize({ width: dimensions.width, height: dimensions.height });
+      dimensions.close();
+      setCropZoom(1);
+      setCropX(0);
+      setCropY(0);
     } catch (photoError) {
       setError(photoError instanceof Error ? photoError.message : "تعذّرت معالجة الصورة");
     } finally {
       setPhotoBusy(false);
     }
   }
+
+  async function applyCrop() {
+    if (!cropSource) return;
+    setPhotoBusy(true);
+    setError("");
+    try {
+      setPhoto(await cropPhoto(cropSource, cropZoom, cropX, cropY));
+      setCropSource("");
+    } catch (cropError) {
+      setError(cropError instanceof Error ? cropError.message : "تعذّر قص الصورة");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  const cropBaseScale = Math.max(256 / cropSize.width, 256 / cropSize.height);
+  const cropWidth = cropSize.width * cropBaseScale * cropZoom;
+  const cropHeight = cropSize.height * cropBaseScale * cropZoom;
+  const cropTravelX = Math.max(0, (cropWidth - 256) / 2);
+  const cropTravelY = Math.max(0, (cropHeight - 256) / 2);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -222,6 +271,28 @@ function NewStudentPage() {
           </form>
         </section>
       </div>
+      <Dialog open={Boolean(cropSource)} onOpenChange={(open) => { if (!open && !photoBusy) setCropSource(""); }}>
+        <DialogContent dir="rtl" className="w-[calc(100%-2rem)] sm:max-w-md">
+          <DialogHeader className="text-right sm:text-right">
+            <DialogTitle>ضبط صورة الطالب</DialogTitle>
+            <DialogDescription>كبّر الصورة وحرّكها حتى يظهر الوجه داخل الإطار الدائري.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="relative mx-auto size-64 overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner">
+              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="absolute left-1/2 top-1/2 max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(calc(-50% + ${(cropX / 100) * cropTravelX}px), calc(-50% + ${(cropY / 100) * cropTravelY}px))` }} />}
+            </div>
+            <div className="space-y-4">
+              <div><Label className="mb-2 flex items-center gap-2"><ZoomIn className="size-4" /> التكبير</Label><Slider value={[cropZoom]} min={1} max={2.5} step={0.05} onValueChange={([value]) => setCropZoom(value ?? 1)} /></div>
+              <div><Label className="mb-2 flex items-center gap-2"><Move className="size-4" /> تحريك أفقي</Label><Slider value={[cropX]} min={-100} max={100} step={1} onValueChange={([value]) => setCropX(value ?? 0)} /></div>
+              <div><Label className="mb-2 flex items-center gap-2"><Move className="size-4 rotate-90" /> تحريك عمودي</Label><Slider value={[cropY]} min={-100} max={100} step={1} onValueChange={([value]) => setCropY(value ?? 0)} /></div>
+            </div>
+          </div>
+          <DialogFooter className="flex-row gap-2 sm:justify-start">
+            <Button type="button" onClick={applyCrop} disabled={photoBusy}>{photoBusy ? <LoaderCircle className="animate-spin" /> : <Check />} اعتماد الصورة</Button>
+            <Button type="button" variant="ghost" onClick={() => setCropSource("")} disabled={photoBusy}>إلغاء</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
