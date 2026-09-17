@@ -81,6 +81,7 @@ function NewStudentPage() {
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState("");
   const [cropSource, setCropSource] = useState("");
+  const [cropSize, setCropSize] = useState({ width: 1, height: 1 });
   const [cropZoom, setCropZoom] = useState(1);
   const [cropX, setCropX] = useState(0);
   const [cropY, setCropY] = useState(0);
@@ -104,6 +105,9 @@ function NewStudentPage() {
     setError("");
     try {
       setCropSource(await readPhoto(file));
+      const dimensions = await createImageBitmap(file);
+      setCropSize({ width: dimensions.width, height: dimensions.height });
+      dimensions.close();
       setCropZoom(1);
       setCropX(0);
       setCropY(0);
@@ -127,6 +131,12 @@ function NewStudentPage() {
       setPhotoBusy(false);
     }
   }
+
+  const cropBaseScale = Math.max(256 / cropSize.width, 256 / cropSize.height);
+  const cropWidth = cropSize.width * cropBaseScale * cropZoom;
+  const cropHeight = cropSize.height * cropBaseScale * cropZoom;
+  const cropTravelX = Math.max(0, (cropWidth - 256) / 2);
+  const cropTravelY = Math.max(0, (cropHeight - 256) / 2);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -269,7 +279,7 @@ function NewStudentPage() {
           </DialogHeader>
           <div className="space-y-5">
             <div className="mx-auto size-64 overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner">
-              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="h-full w-full object-cover" style={{ transform: `translate(${cropX * 0.35}px, ${cropY * 0.35}px) scale(${cropZoom})` }} />}
+              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(${(cropX / 100) * cropTravelX}px, ${(cropY / 100) * cropTravelY}px)` }} />}
             </div>
             <div className="space-y-4">
               <div><Label className="mb-2 flex items-center gap-2"><ZoomIn className="size-4" /> التكبير</Label><Slider value={[cropZoom]} min={1} max={2.5} step={0.05} onValueChange={([value]) => setCropZoom(value ?? 1)} /></div>
