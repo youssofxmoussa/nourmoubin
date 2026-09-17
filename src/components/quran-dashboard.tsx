@@ -42,6 +42,7 @@ import {
   updateQuranCell,
 } from "@/lib/quran-sheet.functions";
 import { exportTableToPdf, printStudentCard } from "@/lib/export-table-pdf";
+import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -262,7 +263,7 @@ export function QuranDashboard({ initialData }: Props) {
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{rows.length} طالباً</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
+             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
              <Button variant="outline" onClick={exportPdf} disabled={!rows.length} className="w-full sm:w-auto"><FileDown /> تصدير الجدول PDF</Button>
            </footer>
 
