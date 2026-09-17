@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { getQuranSheet, updateQuranCell } from "@/lib/quran-sheet.functions";
+import { exportTableToPdf } from "@/lib/export-table-pdf";
+
 
 type Workbook = Awaited<ReturnType<typeof getQuranSheet>>;
 type Props = { initialData?: Workbook | null };
