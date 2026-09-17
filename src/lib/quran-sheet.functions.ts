@@ -124,6 +124,73 @@ export const updateQuranCell = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const deleteQuranStudentRow = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({
+      sheet: z.string().min(1).max(100),
+      rowNumber: z.number().int().min(3).max(1000),
+    }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const current = await loadSheet(data.sheet, { fresh: true });
+    const rows = current.values
+      .slice(2)
+      .map((row, index) => ({ row: Array.from({ length: 9 }, (_, column) => String(row[column] ?? "")), rowNumber: index + 3 }))
+      .filter(({ row }) => Boolean(row[1]?.trim()));
+    const target = rows.find(({ rowNumber }) => rowNumber === data.rowNumber);
+    if (!target) throw new Error("الطالب غير موجود");
+
+    const remaining = rows
+      .filter(({ rowNumber }) => rowNumber !== data.rowNumber)
+      .map(({ row }, index) => row.map((value, column) => column === 0 ? String(index + 1) : value));
+    const clearEnd = Math.max(3, current.values.length);
+    const clearRange = `${quoteSheet(data.sheet)}!A3:I${clearEnd}`;
+    await request(`/spreadsheets/${SPREADSHEET_ID}/values/${clearRange}:clear`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+    if (remaining.length) {
+      const writeRange = `${quoteSheet(data.sheet)}!A3:I${remaining.length + 2}`;
+      await request(`/spreadsheets/${SPREADSHEET_ID}/values/${writeRange}?valueInputOption=USER_ENTERED`, {
+        method: "PUT",
+        body: JSON.stringify({ range: writeRange, majorDimension: "ROWS", values: remaining }),
+      });
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: affectedPhotos } = await supabaseAdmin
+      .from("student_photos")
+      .select("id, sheet_row, storage_path")
+      .eq("sheet_name", data.sheet)
+      .gte("sheet_row", data.rowNumber)
+      .order("sheet_row", { ascending: true });
+    const deletedPhoto = affectedPhotos?.find((photo) => photo.sheet_row === data.rowNumber);
+    if (affectedPhotos?.length) {
+      const { error: deleteLinksError } = await supabaseAdmin
+        .from("student_photos")
+        .delete()
+        .in("id", affectedPhotos.map((photo) => photo.id));
+      if (deleteLinksError) throw deleteLinksError;
+      const shifted = affectedPhotos
+        .filter((photo) => photo.sheet_row > data.rowNumber)
+        .map((photo) => ({
+          sheet_name: data.sheet,
+          sheet_row: photo.sheet_row - 1,
+          student_name: remaining[photo.sheet_row - 4]?.[1] ?? "طالب",
+          storage_path: photo.storage_path,
+        }));
+      if (shifted.length) {
+        const { error: shiftError } = await supabaseAdmin.from("student_photos").insert(shifted);
+        if (shiftError) throw shiftError;
+      }
+    }
+    if (deletedPhoto?.storage_path) {
+      await supabaseAdmin.storage.from("student-photos").remove([deletedPhoto.storage_path]);
+    }
+    cache.clear();
+    return { ok: true };
+  });
+
 // الجدول يبدأ من الصف 3، والخانات تبقى فاضية حتى يُضاف طالب.
 // كل طالب جديد يأخذ الرقم التالي (1، 2، 3...) وينكتب في أول صف فاضي.
 export const addQuranStudentRow = createServerFn({ method: "POST" })
