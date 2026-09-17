@@ -2,7 +2,7 @@ const FONT_URL = "/__l5e/assets-v1/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyah
 
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
-type ExportInput = { title: string; sheet: string; labels: string[]; rows: string[][]; photos?: (string | undefined)[] };
+type ExportInput = { title: string; sheet: string; labels: string[]; rows: string[][]; categories: ("num" | "name" | "memorization")[]; photos?: (string | undefined)[] };
 type CardInput = { title: string; sheet: string; labels: string[]; row: string[]; photo?: string };
 
 async function embedImage(url?: string) {
@@ -41,12 +41,12 @@ function printHtml(html: string) {
   iframe.srcdoc = html;
 }
 
-export async function exportTableToPdf({ title, sheet, labels, rows, photos = [] }: ExportInput) {
+export async function exportTableToPdf({ title, sheet, labels, rows, categories, photos = [] }: ExportInput) {
   const embeddedPhotos = await Promise.all(photos.map(embedImage));
   const head = labels.map((label) => `<th>${escapeHtml(label)}</th>`).join("");
   const body = rows.map((row, rowIndex) => `<tr>${labels.map((_, columnIndex) => {
-    const category = columnIndex === 0 ? "num" : columnIndex === 1 ? "name" : "memorization";
-    const photo = columnIndex === 1 && embeddedPhotos[rowIndex] ? `<img src="${embeddedPhotos[rowIndex]}" alt="" />` : "";
+    const category = categories[columnIndex] ?? "memorization";
+    const photo = category === "name" && embeddedPhotos[rowIndex] ? `<img src="${embeddedPhotos[rowIndex]}" alt="" />` : "";
     return `<td class="${category}">${photo}<span>${escapeHtml(row[columnIndex] ?? "")}</span></td>`;
   }).join("")}</tr>`).join("");
   printHtml(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>${escapeHtml(`${title} — ${sheet}`)}</title><style>
