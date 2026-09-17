@@ -140,6 +140,19 @@ export function QuranDashboard({ initialData }: Props) {
     }
   }
 
+  function exportPdf() {
+    const columns = labels.map((_, index) => index).filter((index) => visible[index]);
+    exportTableToPdf({
+      title: data.title || "سجل طلاب القرآن",
+      sheet: data.activeSheet,
+      labels: columns.map((index) => labels[index] ?? `عمود ${index + 1}`),
+      rows: rows.map(({ row, sourceIndex }) =>
+        columns.map((index) => String(row[index] ?? (index === 0 ? sourceIndex + 1 : ""))),
+      ),
+    });
+  }
+
+
   return (
     <main className="min-h-screen bg-background text-foreground" dir="rtl">
       <svg aria-hidden="true" className="pointer-events-none absolute h-0 w-0">
