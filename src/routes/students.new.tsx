@@ -278,8 +278,8 @@ function NewStudentPage() {
             <DialogDescription>كبّر الصورة وحرّكها حتى يظهر الوجه داخل الإطار الدائري.</DialogDescription>
           </DialogHeader>
           <div className="space-y-5">
-            <div className="mx-auto size-64 overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner">
-              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(${(cropX / 100) * cropTravelX}px, ${(cropY / 100) * cropTravelY}px)` }} />}
+            <div className="relative mx-auto size-64 overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner">
+              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="absolute left-1/2 top-1/2 max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(calc(-50% + ${(cropX / 100) * cropTravelX}px), calc(-50% + ${(cropY / 100) * cropTravelY}px))` }} />}
             </div>
             <div className="space-y-4">
               <div><Label className="mb-2 flex items-center gap-2"><ZoomIn className="size-4" /> التكبير</Label><Slider value={[cropZoom]} min={1} max={2.5} step={0.05} onValueChange={([value]) => setCropZoom(value ?? 1)} /></div>
