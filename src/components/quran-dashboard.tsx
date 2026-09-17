@@ -175,8 +175,9 @@ export function QuranDashboard({ initialData }: Props) {
           <div className="notebook mt-5">
             {loading && <div className="absolute inset-0 z-20 grid place-items-center bg-paper/80"><LoaderCircle className="size-7 animate-spin text-primary" /></div>}
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[920px] border-collapse text-sm">
-                <thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className="border-b border-l border-line bg-note px-3 py-3 text-right text-xs font-black last:border-l-0">{label}</th>)}</tr></thead>
+              <table className="w-full table-fixed border-collapse text-sm">
+                <thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className={`border-b border-l border-line bg-note px-3 py-3 text-right text-xs font-black last:border-l-0 ${index === 0 ? "w-12" : ""}`}>{label}</th>)}</tr></thead>
+
                 <tbody>{rows.map(({ row, sourceIndex }) => <tr key={`${row[0]}-${sourceIndex}`} className="group hover:bg-note/50">{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex} className="relative min-w-28 border-b border-l border-line p-0 last:border-l-0 first:min-w-14"><button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} className="flex h-12 w-full items-center px-3 text-right outline-none transition-colors hover:bg-note focus-visible:bg-focus focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`تعديل ${label} للطالب ${row[1] ?? ""}`}><span className="truncate">{row[columnIndex] || "—"}</span></button>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="absolute left-2 top-1/2 size-3 -translate-y-1/2 animate-spin text-muted-foreground" />}{savedCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <Check className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-success" />}</td>)}</tr>)}</tbody>
               </table>
             </div>
