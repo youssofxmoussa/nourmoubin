@@ -123,8 +123,8 @@
   --cell-number: oklch(0.925 0.075 84);
   --cell-name: oklch(0.965 0.018 92);
   --cell-memorization: oklch(0.955 0.035 158);
-  --cell-total: oklch(0.925 0.055 202);
-  --cell-notes: oklch(0.95 0.042 55);
+  --cell-total: oklch(0.955 0.035 158);
+  --cell-notes: oklch(0.955 0.035 158);
 }
 
 .dark {
