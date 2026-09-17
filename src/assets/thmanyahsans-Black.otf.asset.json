@@ -1,11 +1,11 @@
 {
-  "version": 1,
   "asset_id": "29e4c353-d377-469e-b18a-5d9316313f4d",
-  "project_id": "fd83b336-de8f-468f-9a33-c88b322c38fc",
-  "url": "/__l5e/assets-v1/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyahsans-Black.otf",
-  "r2_key": "a/v1/fd83b336-de8f-468f-9a33-c88b322c38fc/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyahsans-Black.otf",
-  "original_filename": "thmanyahsans-Black.otf",
-  "size": 242168,
   "content_type": "font/otf",
-  "created_at": "2026-09-13T16:10:14Z"
+  "created_at": "2026-09-13T16:10:14Z",
+  "original_filename": "thmanyahsans-Black.otf",
+  "project_id": "e35582a7-0634-4b8f-93ce-5106f6af004a",
+  "r2_key": "a/v1/e35582a7-0634-4b8f-93ce-5106f6af004a/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyahsans-Black.otf",
+  "size": 242168,
+  "url": "/__l5e/assets-v1/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyahsans-Black.otf",
+  "version": 1
 }
