@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, BookOpenText, Check, LoaderCircle, UserRoundPlus } from "lucide-react";
+import { ArrowRight, BookOpenText, Camera, Check, ImagePlus, LoaderCircle, Trash2, UserRoundPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { addQuranStudentRow, getQuranSheet } from "@/lib/quran-sheet.functions";
+import { addQuranStudentRow, getQuranSheet, saveQuranStudentPhoto } from "@/lib/quran-sheet.functions";
+
+async function preparePhoto(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("اختر ملف صورة");
+  const source = await createImageBitmap(file);
+  const maxSide = 900;
+  const scale = Math.min(1, maxSide / Math.max(source.width, source.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(source.width * scale));
+  canvas.height = Math.max(1, Math.round(source.height * scale));
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("تعذّرت معالجة الصورة");
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  source.close();
+  return canvas.toDataURL("image/jpeg", 0.78);
+}
 
 export const Route = createFileRoute("/students/new")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -37,6 +52,7 @@ export const Route = createFileRoute("/students/new")({
 function NewStudentPage() {
   const workbook = Route.useLoaderData();
   const addStudent = useServerFn(addQuranStudentRow);
+  const savePhoto = useServerFn(saveQuranStudentPhoto);
   const navigate = useNavigate();
   const headings = workbook.values[0]?.slice(0, 9) ?? [];
   const subheadings = workbook.values[1]?.slice(0, 9) ?? [];
@@ -45,9 +61,32 @@ function NewStudentPage() {
   const [values, setValues] = useState<string[]>(Array(9).fill(""));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [photo, setPhoto] = useState("");
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const cameraInput = useRef<HTMLInputElement>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (photo.startsWith("blob:")) URL.revokeObjectURL(photo);
+  }, [photo]);
 
   function changeValue(index: number, value: string) {
     setValues((current) => current.map((item, itemIndex) => (itemIndex === index ? value : item)));
+  }
+
+  async function choosePhoto(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    setError("");
+    try {
+      setPhoto(await preparePhoto(file));
+    } catch (photoError) {
+      setError(photoError instanceof Error ? photoError.message : "تعذّرت معالجة الصورة");
+    } finally {
+      setPhotoBusy(false);
+    }
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -64,7 +103,10 @@ function NewStudentPage() {
     setSubmitting(true);
     setError("");
     try {
-      await addStudent({ data: { sheet, values: values.map((value) => value.trim()) } });
+      const created = await addStudent({ data: { sheet, values: values.map((value) => value.trim()) } });
+      if (photo) {
+        await savePhoto({ data: { sheet, rowNumber: created.rowNumber, studentName: name, imageData: photo } });
+      }
       await navigate({ to: "/", search: { sheet } });
     } catch {
       setError("تعذّر حفظ الطالب. جرّب مرة أخرى.");
@@ -102,6 +144,26 @@ function NewStudentPage() {
           </div>
 
           <form onSubmit={submit} className="notebook p-4 sm:p-7">
+            <div className="mb-7 border-b border-line pb-7">
+              <Label>صورة الطالب</Label>
+              <div className="mt-3 flex flex-col items-center gap-4 rounded-md border border-line bg-cell-name p-4 sm:flex-row sm:items-center">
+                <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-paper bg-note shadow-sm">
+                  {photo ? <img src={photo} alt="معاينة صورة الطالب" className="h-full w-full object-cover" /> : <UserRoundPlus className="size-10 text-primary" aria-hidden="true" />}
+                </div>
+                <div className="flex-1 text-center sm:text-right">
+                  <p className="font-black">أضف صورة واضحة للطالب</p>
+                  <p className="mt-1 text-xs leading-6 text-muted-foreground">يمكنك التقاطها الآن بالموبايل أو اختيارها من الصور. الصورة تظهر في الموقع فقط.</p>
+                  <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+                    <Button type="button" variant="outline" onClick={() => cameraInput.current?.click()} disabled={photoBusy}><Camera /> تصوير الطالب</Button>
+                    <Button type="button" variant="outline" onClick={() => fileInput.current?.click()} disabled={photoBusy}><ImagePlus /> اختيار من الملفات</Button>
+                    {photo && <Button type="button" variant="ghost" size="icon" onClick={() => setPhoto("")} aria-label="حذف الصورة"><Trash2 /></Button>}
+                  </div>
+                </div>
+              </div>
+              <input ref={cameraInput} type="file" accept="image/*" capture="environment" onChange={choosePhoto} className="sr-only" aria-label="التقاط صورة الطالب" />
+              <input ref={fileInput} type="file" accept="image/*" onChange={choosePhoto} className="sr-only" aria-label="اختيار صورة الطالب من الملفات" />
+            </div>
+
             <div className="mb-6 grid gap-2">
               <Label htmlFor="sheet">دفتر المتابعة</Label>
               <Select value={sheet} onValueChange={setSheet} dir="rtl">
@@ -152,7 +214,7 @@ function NewStudentPage() {
               <Button type="button" variant="ghost" asChild>
                 <Link to="/" search={{ sheet }}>إلغاء</Link>
               </Button>
-              <Button type="submit" className="h-11 sm:min-w-40" disabled={submitting || !sheet}>
+              <Button type="submit" className="h-11 sm:min-w-40" disabled={submitting || photoBusy || !sheet}>
                 {submitting ? <LoaderCircle className="animate-spin" /> : <Check />}
                 {submitting ? "جارٍ الحفظ..." : "حفظ الطالب"}
               </Button>

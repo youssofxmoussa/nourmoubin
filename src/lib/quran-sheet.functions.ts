@@ -40,7 +40,13 @@ function quoteSheet(name: string) {
   return `'${name.replaceAll("'", "''")}'`;
 }
 
-type Workbook = { title: string; sheets: string[]; activeSheet: string; values: string[][] };
+type Workbook = {
+  title: string;
+  sheets: string[];
+  activeSheet: string;
+  values: string[][];
+  photos: Record<number, string>;
+};
 const cache = new Map<string, { at: number; data: Workbook }>();
 const CACHE_MS = 20_000;
 
@@ -70,16 +76,33 @@ async function fetchSheet(sheet?: string): Promise<Workbook> {
     .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
     .map((item) => item.title);
   const activeSheet = sheet && sheets.includes(sheet) ? sheet : (sheets[0] ?? "");
-  if (!activeSheet) return { title: metadata.properties?.title ?? "سجل الطلاب", sheets, activeSheet, values: [] };
+  if (!activeSheet) return { title: metadata.properties?.title ?? "سجل الطلاب", sheets, activeSheet, values: [], photos: {} };
   const range = `${quoteSheet(activeSheet)}!A1:Z100`;
   const data = (await request(`/spreadsheets/${SPREADSHEET_ID}/values/${range}`)) as {
     values?: string[][];
   };
+  const photos: Record<number, string> = {};
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: photoRows } = await supabaseAdmin
+      .from("student_photos")
+      .select("sheet_row, storage_path")
+      .eq("sheet_name", activeSheet);
+    await Promise.all((photoRows ?? []).map(async (photo) => {
+      const { data: signed } = await supabaseAdmin.storage
+        .from("student-photos")
+        .createSignedUrl(photo.storage_path, 60 * 60);
+      if (signed?.signedUrl) photos[photo.sheet_row] = signed.signedUrl;
+    }));
+  } catch (error) {
+    console.error("Student photos could not be loaded", error);
+  }
   return {
     title: metadata.properties?.title ?? "سجل الطلاب",
     sheets,
     activeSheet,
     values: data.values ?? [],
+    photos,
   };
 }
 
@@ -136,5 +159,53 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [row] }),
     });
     cache.clear();
-    return { ok: true, number };
+    return { ok: true, number, rowNumber };
+  });
+
+export const saveQuranStudentPhoto = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z.object({
+      sheet: z.string().min(1).max(100),
+      rowNumber: z.number().int().min(3).max(1000),
+      studentName: z.string().min(1).max(500),
+      imageData: z.string().max(3_000_000),
+    }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/.exec(data.imageData);
+    if (!match?.[1] || !match[2]) throw new Error("صيغة الصورة غير مدعومة");
+    const extension = match[1] === "image/png" ? "png" : match[1] === "image/webp" ? "webp" : "jpg";
+    const path = `${crypto.randomUUID()}.${extension}`;
+    const bytes = Buffer.from(match[2], "base64");
+    if (bytes.byteLength > 2_000_000) throw new Error("حجم الصورة كبير جداً");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("student-photos")
+      .upload(path, bytes, { contentType: match[1], upsert: false });
+    if (uploadError) throw uploadError;
+
+    const { data: previous } = await supabaseAdmin
+      .from("student_photos")
+      .select("storage_path")
+      .eq("sheet_name", data.sheet)
+      .eq("sheet_row", data.rowNumber)
+      .maybeSingle();
+    const { error: linkError } = await supabaseAdmin
+      .from("student_photos")
+      .upsert({
+        sheet_name: data.sheet,
+        sheet_row: data.rowNumber,
+        student_name: data.studentName,
+        storage_path: path,
+      }, { onConflict: "sheet_name,sheet_row" });
+    if (linkError) {
+      await supabaseAdmin.storage.from("student-photos").remove([path]);
+      throw linkError;
+    }
+    if (previous?.storage_path && previous.storage_path !== path) {
+      await supabaseAdmin.storage.from("student-photos").remove([previous.storage_path]);
+    }
+    cache.clear();
+    return { ok: true };
   });

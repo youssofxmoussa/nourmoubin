@@ -28,8 +28,8 @@ export function exportTableToPdf({ title, sheet, labels, rows }: ExportInput) {
   const body = rows
     .map(
       (row, index) =>
-        `<tr class="${index % 2 ? "alt" : ""}">${labels
-          .map((_, columnIndex) => `<td class="${columnIndex === 0 ? "num" : columnIndex === 1 ? "name" : ""}">${escapeHtml(row[columnIndex] ?? "")}</td>`)
+        `<tr>${labels
+          .map((_, columnIndex) => `<td class="${columnIndex === 0 ? "num" : columnIndex === 1 ? "name" : columnIndex >= 2 && columnIndex <= 6 ? "memorization" : columnIndex === 7 ? "total" : "notes"}">${escapeHtml(row[columnIndex] ?? "")}</td>`)
           .join("")}</tr>`,
     )
     .join("");
@@ -48,9 +48,11 @@ h1{margin:0;font-size:20pt;}
 table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:9.5pt;}
 th,td{border:0.6pt solid oklch(0.88 0.028 88);padding:2.1mm 2.4mm;text-align:right;vertical-align:middle;word-wrap:break-word;}
 thead th{background:oklch(0.48 0.105 164);color:oklch(0.99 0.005 92);font-size:9.5pt;}
-tr.alt td{background:oklch(0.975 0.012 93);}
-td.num{background:oklch(0.94 0.055 88);text-align:center;width:14mm;}
-td.name{width:44mm;}
+td.num{background:oklch(0.925 0.075 84);text-align:center;width:14mm;}
+td.name{background:oklch(0.965 0.018 92);width:44mm;}
+td.memorization{background:oklch(0.955 0.035 158);}
+td.total{background:oklch(0.925 0.055 202);}
+td.notes{background:oklch(0.95 0.042 55);}
 tfoot td{border:0;padding-top:3mm;font-size:8.5pt;color:oklch(0.52 0.025 65);}
 </style></head>
 <body><div class="page">
