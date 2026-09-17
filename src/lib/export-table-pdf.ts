@@ -30,7 +30,10 @@ function printHtml(html: string) {
   const cleanup = () => window.setTimeout(() => iframe.remove(), 800);
   iframe.onload = () => {
     const win = iframe.contentWindow;
-    if (!win) return cleanup();
+    if (!win) {
+      cleanup();
+      return;
+    }
     const start = () => { win.focus(); win.print(); cleanup(); };
     const fonts = (win.document as Document & { fonts?: FontFaceSet }).fonts;
     if (fonts?.ready) fonts.ready.then(start).catch(start); else window.setTimeout(start, 400);

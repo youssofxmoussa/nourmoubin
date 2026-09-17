@@ -185,12 +185,13 @@ export function QuranDashboard({ initialData }: Props) {
   }
 
   async function printCard(student: StudentRow) {
+    const photo = data.photos?.[student.sourceIndex + 3];
     await printStudentCard({
       title: data.title || "سجل طلاب القرآن",
       sheet: data.activeSheet,
       labels,
       row: student.row.map((value, index) => String(value ?? (index === 0 ? student.sourceIndex + 1 : ""))),
-      photo: data.photos?.[student.sourceIndex + 3],
+      ...(photo ? { photo } : {}),
     });
   }
 
