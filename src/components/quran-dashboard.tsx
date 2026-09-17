@@ -11,8 +11,10 @@ import {
   LoaderCircle,
   Menu,
   Pencil,
+  Printer,
   Search,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -34,8 +36,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { getQuranSheet, updateQuranCell } from "@/lib/quran-sheet.functions";
-import { exportTableToPdf } from "@/lib/export-table-pdf";
+import {
+  deleteQuranStudentRow,
+  getQuranSheet,
+  updateQuranCell,
+} from "@/lib/quran-sheet.functions";
+import { exportTableToPdf, printStudentCard } from "@/lib/export-table-pdf";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 
 type Workbook = Awaited<ReturnType<typeof getQuranSheet>>;
@@ -56,9 +72,7 @@ const cellCategory = (index: number) => index === 0
     ? "bg-cell-name"
     : index >= 2 && index <= 6
       ? "bg-cell-memorization"
-      : index === 7
-        ? "bg-cell-total"
-        : "bg-cell-notes";
+      : "bg-cell-memorization";
 
 type EditableCell = {
   rowIndex: number;
@@ -68,9 +82,12 @@ type EditableCell = {
   value: string;
 };
 
+type StudentRow = { row: string[]; sourceIndex: number };
+
 export function QuranDashboard({ initialData }: Props) {
   const loadSheet = useServerFn(getQuranSheet);
   const saveCell = useServerFn(updateQuranCell);
+  const deleteStudent = useServerFn(deleteQuranStudentRow);
   const [data, setData] = useState<Workbook>((initialData ?? EMPTY_WORKBOOK) as Workbook);
   const [query, setQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -81,6 +98,9 @@ export function QuranDashboard({ initialData }: Props) {
   const [editing, setEditing] = useState<EditableCell | null>(null);
   const [editValue, setEditValue] = useState("");
   const [saveError, setSaveError] = useState("");
+  const [deleting, setDeleting] = useState<StudentRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   const values = data?.values ?? [];
   const headings = values[0]?.slice(0, 9) ?? [];
@@ -151,16 +171,43 @@ export function QuranDashboard({ initialData }: Props) {
     }
   }
 
-  function exportPdf() {
+  async function exportPdf() {
     const columns = labels.map((_, index) => index).filter((index) => visible[index]);
-    exportTableToPdf({
+    await exportTableToPdf({
       title: data.title || "سجل طلاب القرآن",
       sheet: data.activeSheet,
       labels: columns.map((index) => labels[index] ?? `عمود ${index + 1}`),
       rows: rows.map(({ row, sourceIndex }) =>
         columns.map((index) => String(row[index] ?? (index === 0 ? sourceIndex + 1 : ""))),
       ),
+      photos: rows.map(({ sourceIndex }) => data.photos?.[sourceIndex + 3]),
     });
+  }
+
+  async function printCard(student: StudentRow) {
+    await printStudentCard({
+      title: data.title || "سجل طلاب القرآن",
+      sheet: data.activeSheet,
+      labels,
+      row: student.row.map((value, index) => String(value ?? (index === 0 ? student.sourceIndex + 1 : ""))),
+      photo: data.photos?.[student.sourceIndex + 3],
+    });
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError("");
+    try {
+      await deleteStudent({ data: { sheet: data.activeSheet, rowNumber: deleting.sourceIndex + 3 } });
+      const next = await loadSheet({ data: { sheet: data.activeSheet } });
+      setData(next);
+      setDeleting(null);
+    } catch {
+      setDeleteError("تعذّر حذف الطالب. جرّب مرة أخرى.");
+    } finally {
+      setDeleteBusy(false);
+    }
   }
 
 
@@ -206,10 +253,10 @@ export function QuranDashboard({ initialData }: Props) {
               <table className="w-full table-fixed border-collapse text-sm">
                 <thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className={`border-b border-l border-line px-3 py-3 text-right text-xs font-black last:border-l-0 ${cellCategory(index)} ${index === 0 ? "w-12" : ""}`}>{label}</th>)}</tr></thead>
 
-                <tbody>{rows.map(({ row, sourceIndex }) => <tr key={`${row[0]}-${sourceIndex}`}>{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex} className={`relative border-b border-l border-line p-0 last:border-l-0 ${cellCategory(columnIndex)}`}><button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} className="flex h-14 w-full items-center gap-2 px-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`تعديل ${label} للطالب ${row[1] ?? ""}`}>{columnIndex === 1 && <Avatar className="size-9 border border-line"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-xs text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar>}<span className="truncate">{row[columnIndex] || "—"}</span></button>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="absolute left-2 top-1/2 size-3 -translate-y-1/2 animate-spin text-muted-foreground" />}{savedCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <Check className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-success" />}</td>)}</tr>)}</tbody>
+                <tbody>{rows.map(({ row, sourceIndex }) => <tr key={`${row[0]}-${sourceIndex}`}>{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex} className={`relative border-b border-l border-line p-0 last:border-l-0 ${cellCategory(columnIndex)}`}><div className="flex items-center"><button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} className="flex h-14 min-w-0 flex-1 items-center gap-2 px-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`تعديل ${label} للطالب ${row[1] ?? ""}`}>{columnIndex === 1 && <Avatar className="size-9 shrink-0 border border-line"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-xs text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar>}<span className="truncate">{row[columnIndex] || "—"}</span></button>{columnIndex === 1 && <div className="flex shrink-0 pl-1"><Button variant="ghost" size="icon" onClick={() => printCard({ row, sourceIndex })} aria-label={`طباعة بطاقة ${row[1]}`}><Printer className="size-4" /></Button><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }} aria-label={`حذف ${row[1]}`}><Trash2 className="size-4" /></Button></div>}</div>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="absolute left-2 top-1/2 size-3 -translate-y-1/2 animate-spin text-muted-foreground" />}{savedCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <Check className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-success" />}</td>)}</tr>)}</tbody>
               </table>
             </div>
-            <div className="divide-y divide-line md:hidden">{rows.map(({ row, sourceIndex }) => <article key={`${row[0]}-${sourceIndex}`} className="p-4"><div className="mb-4 flex items-center justify-between gap-3"><div className="flex min-w-0 flex-1 items-center gap-3 rounded-md bg-cell-name p-2"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-cell-number text-xs">{row[0] || sourceIndex + 1}</span><Avatar className="size-12 border-2 border-paper"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar><strong className="truncate">{row[1]}</strong></div><Button type="button" variant="ghost" size="icon" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")} aria-label={`تعديل اسم ${row[1]}`}><Pencil /></Button></div><div className="grid grid-cols-2 gap-3">{labels.slice(2).map((label, offset) => { const columnIndex = offset + 2; if (!visible[columnIndex]) return null; return <button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} key={columnIndex} className={`min-h-16 rounded-md border border-line p-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-ring ${cellCategory(columnIndex)} ${columnIndex === 8 ? "col-span-2" : ""}`}><span className="block text-[11px] text-muted-foreground">{label}</span><span className="mt-1 block truncate text-sm">{row[columnIndex] || "اضغط للإضافة"}</span></button>; })}</div></article>)}</div>
+            <div className="divide-y divide-line md:hidden">{rows.map(({ row, sourceIndex }) => <article key={`${row[0]}-${sourceIndex}`} className="p-4"><div className="mb-4 flex items-center justify-between gap-3"><div className="flex min-w-0 flex-1 items-center gap-3 rounded-md bg-cell-name p-2"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-cell-number text-xs">{row[0] || sourceIndex + 1}</span><Avatar className="size-12 border-2 border-paper"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar><strong className="truncate">{row[1]}</strong></div><Button type="button" variant="ghost" size="icon" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")} aria-label={`تعديل اسم ${row[1]}`}><Pencil /></Button></div><div className="grid grid-cols-2 gap-3">{labels.slice(2).map((label, offset) => { const columnIndex = offset + 2; if (!visible[columnIndex]) return null; return <button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} key={columnIndex} className={`min-h-16 rounded-md border border-line p-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-ring ${cellCategory(columnIndex)} ${columnIndex === 8 ? "col-span-2" : ""}`}><span className="block text-[11px] text-muted-foreground">{label}</span><span className="mt-1 block truncate text-sm">{row[columnIndex] || "اضغط للإضافة"}</span></button>; })}</div><div className="mt-4 flex gap-2 border-t border-line pt-3"><Button type="button" variant="outline" className="flex-1" onClick={() => printCard({ row, sourceIndex })}><Printer /> طباعة البطاقة</Button><Button type="button" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }}><Trash2 /> حذف الطالب</Button></div></article>)}</div>
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -237,6 +284,19 @@ export function QuranDashboard({ initialData }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={Boolean(deleting)} onOpenChange={(open) => { if (!open && !deleteBusy) setDeleting(null); }}>
+        <AlertDialogContent dir="rtl" className="w-[calc(100%-2rem)] sm:max-w-md">
+          <AlertDialogHeader className="text-right sm:text-right">
+            <AlertDialogTitle>حذف {deleting?.row[1]}؟</AlertDialogTitle>
+            <AlertDialogDescription>سيُحذف الطالب وصورته وبياناته من هذا الدفتر، ثم يعاد ترقيم الطلاب تلقائياً. لا يمكن التراجع.</AlertDialogDescription>
+          </AlertDialogHeader>
+          {deleteError && <p className="text-sm text-destructive" role="alert">{deleteError}</p>}
+          <AlertDialogFooter className="flex-row gap-2 sm:justify-start">
+            <AlertDialogAction onClick={(event) => { event.preventDefault(); void confirmDelete(); }} disabled={deleteBusy} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{deleteBusy ? <LoaderCircle className="animate-spin" /> : <Trash2 />} حذف نهائياً</AlertDialogAction>
+            <AlertDialogCancel disabled={deleteBusy}>إلغاء</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
