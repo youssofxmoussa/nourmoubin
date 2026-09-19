@@ -2,7 +2,9 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import {
+  Award,
   BookOpenText,
+  Calculator,
   Check,
   ChevronDown,
   CirclePlus,
@@ -41,7 +43,9 @@ import {
   getQuranSheet,
   updateQuranCell,
 } from "@/lib/quran-sheet.functions";
-import { exportTableToPdf, printStudentCard } from "@/lib/export-table-pdf";
+import { exportTableToPdf, printCertificate, printStudentCard } from "@/lib/export-table-pdf";
+import { QuranRangePicker } from "@/components/quran-picker";
+import { arabicDigits } from "@/lib/quran-surahs";
 import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
@@ -197,6 +201,21 @@ export function QuranDashboard({ initialData }: Props) {
     });
   }
 
+  function completedWeeks(rowIndex: number) {
+    const row = data.values[rowIndex + 2] ?? [];
+    return [2, 3, 4, 5, 6].filter((column) => String(row[column] ?? "").trim()).length;
+  }
+
+  async function printCertificateFor(student: StudentRow) {
+    const photo = data.photos?.[student.sourceIndex + 3];
+    await printCertificate({
+      title: data.title || "سجل طلاب القرآن",
+      sheet: data.activeSheet,
+      row: student.row.map((value, index) => String(value ?? (index === 0 ? student.sourceIndex + 1 : ""))),
+      ...(photo ? { photo } : {}),
+    });
+  }
+
   async function confirmDelete() {
     if (!deleting) return;
     setDeleteBusy(true);
@@ -254,12 +273,12 @@ export function QuranDashboard({ initialData }: Props) {
             {loading && <div className="absolute inset-0 z-20 grid place-items-center bg-paper/80"><LoaderCircle className="size-7 animate-spin text-primary" /></div>}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full table-fixed border-collapse text-sm">
-                <thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className={`border-b border-l border-line px-3 py-3 text-right text-xs font-black last:border-l-0 ${cellCategory(index)} ${index === 0 ? "w-12" : index === 1 ? "w-52" : ""}`}>{label}</th>)}</tr></thead>
+                <thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className={`border-b border-l border-line px-3 py-3 text-right text-xs font-black last:border-l-0 ${cellCategory(index)} ${index === 0 ? "w-12" : index === 1 ? "w-60" : ""}`}>{label}</th>)}</tr></thead>
 
-                 <tbody>{rows.map(({ row, sourceIndex }) => <tr key={`${row[0]}-${sourceIndex}`}>{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex} className={`relative border-b border-l border-line p-0 last:border-l-0 ${cellCategory(columnIndex)}`}><div className="grid grid-cols-[minmax(0,1fr)_auto] items-center"><button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} className="flex h-14 min-w-0 items-center gap-2 px-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`تعديل ${label} للطالب ${row[1] ?? ""}`}>{columnIndex === 1 && <Avatar className="size-9 shrink-0 border border-line"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-xs text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar>}<span className="min-w-0 truncate">{row[columnIndex] || "—"}</span></button>{columnIndex === 1 && <div className="flex shrink-0 items-center pl-1"><Button variant="ghost" size="icon" onClick={() => printCard({ row, sourceIndex })} aria-label={`طباعة بطاقة ${row[1]}`}><Printer className="size-4" /></Button><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }} aria-label={`حذف ${row[1]}`}><Trash2 className="size-4" /></Button></div>}</div>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="absolute left-2 top-1/2 size-3 -translate-y-1/2 animate-spin text-muted-foreground" />}{savedCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <Check className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-success" />}</td>)}</tr>)}</tbody>
+                 <tbody>{rows.map(({ row, sourceIndex }) => <tr key={`${row[0]}-${sourceIndex}`}>{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex} className={`relative border-b border-l border-line p-0 last:border-l-0 ${cellCategory(columnIndex)}`}><div className="grid grid-cols-[minmax(0,1fr)_auto] items-center"><button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} className="flex h-14 min-w-0 items-center gap-2 px-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring" aria-label={`تعديل ${label} للطالب ${row[1] ?? ""}`}>{columnIndex === 1 && <Avatar className="size-9 shrink-0 border border-line"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-xs text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar>}<span className="min-w-0 truncate">{row[columnIndex] || "—"}</span></button>{columnIndex === 1 && <div className="flex shrink-0 items-center pl-1"><Button variant="ghost" size="icon" onClick={() => printCertificateFor({ row, sourceIndex })} aria-label={`شهادة ${row[1]}`}><Award className="size-4" /></Button><Button variant="ghost" size="icon" onClick={() => printCard({ row, sourceIndex })} aria-label={`طباعة بطاقة ${row[1]}`}><Printer className="size-4" /></Button><Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }} aria-label={`حذف ${row[1]}`}><Trash2 className="size-4" /></Button></div>}</div>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="absolute left-2 top-1/2 size-3 -translate-y-1/2 animate-spin text-muted-foreground" />}{savedCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <Check className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-success" />}</td>)}</tr>)}</tbody>
               </table>
             </div>
-            <div className="divide-y divide-line md:hidden">{rows.map(({ row, sourceIndex }) => <article key={`${row[0]}-${sourceIndex}`} className="p-4"><div className="mb-4 flex items-center justify-between gap-3"><div className="flex min-w-0 flex-1 items-center gap-3 rounded-md bg-cell-name p-2"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-cell-number text-xs">{row[0] || sourceIndex + 1}</span><Avatar className="size-12 border-2 border-paper"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar><strong className="truncate">{row[1]}</strong></div><Button type="button" variant="ghost" size="icon" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")} aria-label={`تعديل اسم ${row[1]}`}><Pencil /></Button></div><div className="grid grid-cols-2 gap-3">{labels.slice(2).map((label, offset) => { const columnIndex = offset + 2; if (!visible[columnIndex]) return null; return <button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} key={columnIndex} className={`min-h-16 rounded-md border border-line p-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-ring ${cellCategory(columnIndex)} ${columnIndex === 8 ? "col-span-2" : ""}`}><span className="block text-[11px] text-muted-foreground">{label}</span><span className="mt-1 block truncate text-sm">{row[columnIndex] || "اضغط للإضافة"}</span></button>; })}</div><div className="mt-4 flex gap-2 border-t border-line pt-3"><Button type="button" variant="outline" className="flex-1" onClick={() => printCard({ row, sourceIndex })}><Printer /> طباعة البطاقة</Button><Button type="button" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }}><Trash2 /> حذف الطالب</Button></div></article>)}</div>
+            <div className="divide-y divide-line md:hidden">{rows.map(({ row, sourceIndex }) => <article key={`${row[0]}-${sourceIndex}`} className="p-4"><div className="mb-4 flex items-center justify-between gap-3"><div className="flex min-w-0 flex-1 items-center gap-3 rounded-md bg-cell-name p-2"><span className="grid size-9 shrink-0 place-items-center rounded-full bg-cell-number text-xs">{row[0] || sourceIndex + 1}</span><Avatar className="size-12 border-2 border-paper"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1] ?? "الطالب"}`} className="object-cover" /><AvatarFallback className="bg-primary text-primary-foreground">{String(row[1] ?? "ط").trim().charAt(0) || "ط"}</AvatarFallback></Avatar><strong className="truncate">{row[1]}</strong></div><Button type="button" variant="ghost" size="icon" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")} aria-label={`تعديل اسم ${row[1]}`}><Pencil /></Button></div><div className="grid grid-cols-2 gap-3">{labels.slice(2).map((label, offset) => { const columnIndex = offset + 2; if (!visible[columnIndex]) return null; return <button type="button" onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} key={columnIndex} className={`min-h-16 rounded-md border border-line p-3 text-right outline-none transition-[filter] hover:brightness-[0.97] focus-visible:ring-1 focus-visible:ring-ring ${cellCategory(columnIndex)} ${columnIndex === 8 ? "col-span-2" : ""}`}><span className="block text-[11px] text-muted-foreground">{label}</span><span className="mt-1 block truncate text-sm">{row[columnIndex] || "اضغط للإضافة"}</span></button>; })}</div><div className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3"><Button type="button" variant="outline" className="flex-1 px-0" onClick={() => printCertificateFor({ row, sourceIndex })}><Award /> شهادة</Button><Button type="button" variant="outline" className="flex-1 px-0" onClick={() => printCard({ row, sourceIndex })}><Printer /> بطاقة</Button><Button type="button" variant="outline" className="flex-1 text-destructive hover:text-destructive" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }}><Trash2 /> حذف</Button></div></article>)}</div>
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -278,6 +297,19 @@ export function QuranDashboard({ initialData }: Props) {
           </DialogHeader>
           <div className="px-5 py-5">
             <label htmlFor="cell-value" className="mb-2 block text-sm text-muted-foreground">{editing?.label}</label>
+            {editing && editing.columnIndex >= 2 && editing.columnIndex <= 6 && <QuranRangePicker onInsert={setEditValue} />}
+            {editing?.columnIndex === 7 && (() => {
+              const weeks = completedWeeks(editing.rowIndex);
+              return (
+                <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-line bg-note p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-black">حساب تلقائي</p>
+                    <p className="text-xs text-muted-foreground">اكتمل {arabicDigits(weeks)} من {arabicDigits(5)} أسابيع لهذا الطالب</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setEditValue(`${arabicDigits(weeks)}/${arabicDigits(5)}`)}><Calculator /> احسب</Button>
+                </div>
+              );
+            })()}
             <Textarea id="cell-value" value={editValue} onChange={(event) => setEditValue(event.target.value)} className="min-h-28 resize-none bg-background text-base" autoFocus />
             {saveError && <p className="mt-3 text-sm text-destructive" role="alert">{saveError}</p>}
           </div>
