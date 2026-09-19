@@ -16,7 +16,7 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
   const [from, setFrom] = useState("1");
   const [to, setTo] = useState("1");
 
-  const surah = SURAHS[surahIndex] ?? SURAHS[0];
+  const surah = SURAHS[surahIndex] ?? SURAHS[0] ?? { number: 1, name: "الفاتحة", ayahs: 7 };
   const fromAyah = parseAyah(from, surah.ayahs);
   const toAyah = Math.max(fromAyah, parseAyah(to, surah.ayahs));
   const preview = formatMemorizationRange(surahIndex, fromAyah, toAyah);

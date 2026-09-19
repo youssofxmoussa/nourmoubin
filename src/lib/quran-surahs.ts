@@ -118,7 +118,7 @@ export const SURAHS: Surah[] = [
 ];
 
 export const arabicDigits = (value: number | string) =>
-  String(value).replace(/[0-9]/g, (digit) => "٠١٢٣٤٥٦٧٨٩"[Number(digit)]);
+  String(value).replace(/[0-9]/g, (digit) => "٠١٢٣٤٥٦٧٨٩".charAt(Number(digit)));
 
 export function ayahCountText(count: number) {
   if (count === 1) return "آية واحدة";
