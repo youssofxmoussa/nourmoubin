@@ -123,7 +123,25 @@ export const updateQuranCell = createServerFn({ method: "POST" })
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [[data.value]] }),
     });
     cache.clear();
-    return { ok: true };
+
+    // خانات التسميع (C..G) تعيد حساب عمود الحضور (H) تلقائياً.
+    const parsed = /^([A-Z])(\d+)$/.exec(data.cell);
+    const column = parsed?.[1] ?? "";
+    const rowNumber = Number(parsed?.[2] ?? 0);
+    let attendance: string | null = null;
+    if (rowNumber >= 3 && ["C", "D", "E", "F", "G"].includes(column)) {
+      const rowRange = `${quoteSheet(data.sheet)}!A${rowNumber}:J${rowNumber}`;
+      const rowData = (await request(`/spreadsheets/${SPREADSHEET_ID}/values/${rowRange}`)) as { values?: string[][] };
+      const row = withCalculatedAttendance(rowData.values?.[0] ?? []);
+      attendance = row[7] ?? "";
+      const attendanceRange = `${quoteSheet(data.sheet)}!H${rowNumber}`;
+      await request(`/spreadsheets/${SPREADSHEET_ID}/values/${attendanceRange}?valueInputOption=USER_ENTERED`, {
+        method: "PUT",
+        body: JSON.stringify({ range: attendanceRange, majorDimension: "ROWS", values: [[attendance]] }),
+      });
+      cache.clear();
+    }
+    return { ok: true, attendance };
   });
 
 export const deleteQuranStudentRow = createServerFn({ method: "POST" })
