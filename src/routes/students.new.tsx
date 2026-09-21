@@ -229,8 +229,9 @@ function NewStudentPage() {
             <div className="grid gap-5 sm:grid-cols-2">
               {labels.slice(1).map((label, offset) => {
                 const index = offset + 1;
+                if (index === ATTENDANCE_COLUMN) return null;
                 const isName = index === 1;
-                const isNote = index === 8;
+                const isNote = index === 9;
                 return (
                   <div key={index} className={isName || isNote ? "sm:col-span-2" : ""}>
                     <Label htmlFor={`student-${index}`}>{label}{isName ? " *" : ""}</Label>
