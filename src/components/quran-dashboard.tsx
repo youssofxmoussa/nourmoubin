@@ -46,7 +46,7 @@ import {
 import { exportTableToPdf, printCertificate, printStudentCard } from "@/lib/export-table-pdf";
 import { QuranRangePicker } from "@/components/quran-picker";
 import { arabicDigits } from "@/lib/quran-surahs";
-import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, calculateAttendance } from "@/lib/attendance";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
 import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
@@ -117,11 +117,18 @@ export function QuranDashboard({ initialData }: Props) {
   const rows = useMemo(() => {
     const all = values
       .slice(2)
-      .map((row, sourceIndex) => ({ row, sourceIndex }))
+      .map((row, sourceIndex) => ({ row: withCalculatedAttendance(row), sourceIndex }))
       .filter(({ row }) => Boolean(String(row[1] ?? "").trim()));
     if (!query.trim()) return all;
     return all.filter(({ row }) => row.some((cell) => String(cell ?? "").includes(query.trim())));
   }, [values, query]);
+
+  const attendanceStats = useMemo(() => {
+    if (!rows.length) return { average: 0, full: 0 };
+    const all = rows.map(({ row }) => calculateAttendance(row));
+    const average = Math.round(all.reduce((sum, item) => sum + item.percentage, 0) / all.length);
+    return { average, full: all.filter((item) => item.complete).length };
+  }, [rows]);
 
   async function chooseSheet(sheet: string) {
     if (sheet === data.activeSheet) return;
@@ -155,6 +162,7 @@ export function QuranDashboard({ initialData }: Props) {
   }
 
   function openEditor(rowIndex: number, columnIndex: number, value: string, student: string) {
+    if (columnIndex === ATTENDANCE_COLUMN) return;
     setEditing({ rowIndex, columnIndex, value, student, label: labels[columnIndex] ?? `عمود ${columnIndex + 1}` });
     setEditValue(value);
     setSaveError("");
@@ -285,7 +293,7 @@ export function QuranDashboard({ initialData }: Props) {
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
+             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="hidden sm:inline">•</span><span>متوسط الحضور {arabicDigits(attendanceStats.average)}٪ • حضور كامل {arabicDigits(attendanceStats.full)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
              <Button variant="outline" onClick={exportPdf} disabled={!rows.length} className="w-full sm:w-auto"><FileDown /> تصدير الجدول PDF</Button>
            </footer>
 
