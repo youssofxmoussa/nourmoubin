@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { TABLE_COLUMN_COUNT, withCalculatedAttendance } from "@/lib/attendance";
+
 const SPREADSHEET_ID = "1lY68HHLxncLWpZ4TQcKgb5oSRj2M_Msiydb-moxYa8Y";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
