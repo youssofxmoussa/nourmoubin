@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
+import { TABLE_COLUMN_COUNT, withCalculatedAttendance } from "@/lib/attendance";
+
 const SPREADSHEET_ID = "1lY68HHLxncLWpZ4TQcKgb5oSRj2M_Msiydb-moxYa8Y";
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/google_sheets/v4";
 
@@ -121,7 +123,25 @@ export const updateQuranCell = createServerFn({ method: "POST" })
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [[data.value]] }),
     });
     cache.clear();
-    return { ok: true };
+
+    // خانات التسميع (C..G) تعيد حساب عمود الحضور (H) تلقائياً.
+    const parsed = /^([A-Z])(\d+)$/.exec(data.cell);
+    const column = parsed?.[1] ?? "";
+    const rowNumber = Number(parsed?.[2] ?? 0);
+    let attendance: string | null = null;
+    if (rowNumber >= 3 && ["C", "D", "E", "F", "G"].includes(column)) {
+      const rowRange = `${quoteSheet(data.sheet)}!A${rowNumber}:J${rowNumber}`;
+      const rowData = (await request(`/spreadsheets/${SPREADSHEET_ID}/values/${rowRange}`)) as { values?: string[][] };
+      const row = withCalculatedAttendance(rowData.values?.[0] ?? []);
+      attendance = row[7] ?? "";
+      const attendanceRange = `${quoteSheet(data.sheet)}!H${rowNumber}`;
+      await request(`/spreadsheets/${SPREADSHEET_ID}/values/${attendanceRange}?valueInputOption=USER_ENTERED`, {
+        method: "PUT",
+        body: JSON.stringify({ range: attendanceRange, majorDimension: "ROWS", values: [[attendance]] }),
+      });
+      cache.clear();
+    }
+    return { ok: true, attendance };
   });
 
 export const deleteQuranStudentRow = createServerFn({ method: "POST" })
@@ -135,7 +155,7 @@ export const deleteQuranStudentRow = createServerFn({ method: "POST" })
     const current = await loadSheet(data.sheet, { fresh: true });
     const rows = current.values
       .slice(2)
-      .map((row, index) => ({ row: Array.from({ length: 9 }, (_, column) => String(row[column] ?? "")), rowNumber: index + 3 }))
+      .map((row, index) => ({ row: Array.from({ length: TABLE_COLUMN_COUNT }, (_, column) => String(row[column] ?? "")), rowNumber: index + 3 }))
       .filter(({ row }) => Boolean(row[1]?.trim()));
     const target = rows.find(({ rowNumber }) => rowNumber === data.rowNumber);
     if (!target) throw new Error("الطالب غير موجود");
@@ -144,13 +164,13 @@ export const deleteQuranStudentRow = createServerFn({ method: "POST" })
       .filter(({ rowNumber }) => rowNumber !== data.rowNumber)
       .map(({ row }, index) => row.map((value, column) => column === 0 ? String(index + 1) : value));
     const clearEnd = Math.max(3, current.values.length);
-    const clearRange = `${quoteSheet(data.sheet)}!A3:I${clearEnd}`;
+    const clearRange = `${quoteSheet(data.sheet)}!A3:J${clearEnd}`;
     await request(`/spreadsheets/${SPREADSHEET_ID}/values/${clearRange}:clear`, {
       method: "POST",
       body: JSON.stringify({}),
     });
     if (remaining.length) {
-      const writeRange = `${quoteSheet(data.sheet)}!A3:I${remaining.length + 2}`;
+      const writeRange = `${quoteSheet(data.sheet)}!A3:J${remaining.length + 2}`;
       await request(`/spreadsheets/${SPREADSHEET_ID}/values/${writeRange}?valueInputOption=USER_ENTERED`, {
         method: "PUT",
         body: JSON.stringify({ range: writeRange, majorDimension: "ROWS", values: remaining }),
@@ -198,7 +218,7 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
     z
       .object({
         sheet: z.string().min(1).max(100),
-        values: z.array(z.string().max(1000)).min(2).max(9),
+        values: z.array(z.string().max(1000)).min(2).max(TABLE_COLUMN_COUNT),
       })
       .refine((input) => Boolean(input.values[1]?.trim()), { message: "اسم الطالب مطلوب", path: ["values", 1] })
       .parse(data),
@@ -217,10 +237,10 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
     }
     if (target === -1) target = Math.max(values.length, 2);
     const number = count + 1;
-    const row = Array.from({ length: 9 }, (_, index) => data.values[index] ?? "");
+    const row = withCalculatedAttendance(Array.from({ length: TABLE_COLUMN_COUNT }, (_, index) => data.values[index] ?? ""));
     row[0] = String(number);
     const rowNumber = target + 1;
-    const range = `${quoteSheet(data.sheet)}!A${rowNumber}:I${rowNumber}`;
+    const range = `${quoteSheet(data.sheet)}!A${rowNumber}:J${rowNumber}`;
     await request(`/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=USER_ENTERED`, {
       method: "PUT",
       body: JSON.stringify({ range, majorDimension: "ROWS", values: [row] }),

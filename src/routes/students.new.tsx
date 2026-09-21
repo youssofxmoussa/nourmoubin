@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { addQuranStudentRow, getQuranSheet, saveQuranStudentPhoto } from "@/lib/quran-sheet.functions";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT } from "@/lib/attendance";
 
 async function readPhoto(file: File) {
   if (!file.type.startsWith("image/")) throw new Error("اختر ملف صورة");
@@ -72,11 +73,11 @@ function NewStudentPage() {
   const addStudent = useServerFn(addQuranStudentRow);
   const savePhoto = useServerFn(saveQuranStudentPhoto);
   const navigate = useNavigate();
-  const headings = workbook.values[0]?.slice(0, 9) ?? [];
-  const subheadings = workbook.values[1]?.slice(0, 9) ?? [];
+  const headings = workbook.values[0]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
+  const subheadings = workbook.values[1]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
   const labels = headings.map((heading, index) => heading || subheadings[index] || `عمود ${index + 1}`);
   const [sheet, setSheet] = useState(workbook.activeSheet);
-  const [values, setValues] = useState<string[]>(Array(9).fill(""));
+  const [values, setValues] = useState<string[]>(Array(TABLE_COLUMN_COUNT).fill(""));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [photo, setPhoto] = useState("");
@@ -228,8 +229,9 @@ function NewStudentPage() {
             <div className="grid gap-5 sm:grid-cols-2">
               {labels.slice(1).map((label, offset) => {
                 const index = offset + 1;
+                if (index === ATTENDANCE_COLUMN) return null;
                 const isName = index === 1;
-                const isNote = index === 8;
+                const isNote = index === 9;
                 return (
                   <div key={index} className={isName || isNote ? "sm:col-span-2" : ""}>
                     <Label htmlFor={`student-${index}`}>{label}{isName ? " *" : ""}</Label>
