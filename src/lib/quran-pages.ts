@@ -55,17 +55,16 @@ export function pagesForText(text: string) {
   return pagesForRange(surah.number, from, to);
 }
 
-const formatNumber = (value: number) => {
-  const rounded = Math.round(value * 2) / 2;
-  if (rounded === 0) return "٠";
-  return arabicDigits(Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1).replace(".", "٫"));
-};
+const round = (value: number) => Math.round(value * 4) / 4;
+
+const formatNumber = (value: number) =>
+  arabicDigits(Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, "").replace(".", "\u066B"));
 
 export function pagesLabel(pages: number) {
-  const rounded = Math.round(pages * 2) / 2;
-  if (rounded <= 0) return "";
-  if (rounded === 1) return "صفحة واحدة";
-  if (rounded === 2) return "صفحتان";
-  if (rounded < 11) return `${formatNumber(rounded)} صفحات`;
-  return `${formatNumber(rounded)} صفحة`;
+  const value = round(pages);
+  if (value <= 0) return "";
+  if (value === 1) return "صفحة واحدة";
+  if (value === 2) return "صفحتان";
+  if (Number.isInteger(value) && value < 11) return `${formatNumber(value)} صفحات`;
+  return `${formatNumber(value)} صفحة`;
 }
