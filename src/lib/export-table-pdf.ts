@@ -69,10 +69,9 @@ type CertificateInput = { title: string; sheet: string; row: string[]; photo?: s
 export async function printCertificate({ title, sheet, row, photo }: CertificateInput) {
   const embeddedPhoto = await embedImage(photo);
   const name = row[1] || "طالب";
-  const attendance = String(row[7] ?? "").trim();
   const total = String(row[8] ?? "").trim();
   const date = new Intl.DateTimeFormat("ar", { day: "numeric", month: "long", year: "numeric" }).format(new Date());
-  const chips = [total ? `<div class="chip"><span>نتيجة المتابعة</span><strong>${escapeHtml(total)}</strong></div>` : "", attendance ? `<div class="chip"><span>نسبة الحضور</span><strong>${escapeHtml(attendance)}</strong></div>` : ""].filter(Boolean).join("");
+  const chips = total ? `<div class="chip"><span>المحفوظ خلال الشهر</span><strong>${escapeHtml(total)}</strong></div>` : "";
   printHtml(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>شهادة ${escapeHtml(name)}</title><style>
 @font-face{font-family:Thmanyah;src:url("${FONT_URL}") format("opentype");font-weight:900}@page{size:180mm 320mm;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}html,body{margin:0;height:100%}body{font-family:Thmanyah,Tahoma,sans-serif;color:#35312b;background:#fffdf6}
 .sheet{position:relative;width:180mm;height:320mm;padding:14mm;display:flex;flex-direction:column;align-items:center;text-align:center;background:radial-gradient(120% 60% at 50% 0,#eef8f0 0,#fffdf6 60%)}
