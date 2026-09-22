@@ -42,16 +42,39 @@ export function pagesForRange(surahNumber: number, fromAyah: number, toAyah: num
 const ARABIC_TO_LATIN = (value: string) =>
   value.replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)));
 
+const JUZ_PAGES = 604 / 30;
+
 /** Pages memorized according to a free-text memorization cell. */
 export function pagesForText(text: string) {
   const clean = ARABIC_TO_LATIN(String(text ?? "")).trim();
   if (!clean) return 0;
+  const numbers = (clean.match(/\d+(?:[.,]\d+)?/g) ?? []).map((value) => Number(value.replace(",", "."))).filter((value) => value > 0);
+
+  // صفحات مكتوبة صريحاً: "٣ صفحات" أو "صفحة ونصف".
+  if (/صفح|وجه|أوجه/.test(clean)) {
+    const explicit = numbers[0] ?? 1;
+    const half = /نصف|وجه واحد/.test(clean) ? 0.5 : 0;
+    return /وجه|أوجه/.test(clean) && !/صفح/.test(clean) ? explicit * 0.5 : explicit + half;
+  }
+
+  // أجزاء أو أحزاب.
+  if (/جزء|أجزاء|الاجزاء|الأجزاء/.test(clean)) {
+    const from = numbers[0] ?? 1;
+    const to = numbers[1] ?? from;
+    const count = Math.max(1, Math.abs(to - from) + 1);
+    return count * JUZ_PAGES * (/نصف/.test(clean) ? 0.5 : 1);
+  }
+  if (/حزب|أحزاب/.test(clean)) {
+    const count = Math.max(1, numbers.length > 1 ? Math.abs((numbers[1] ?? 1) - (numbers[0] ?? 1)) + 1 : (numbers[0] ? 1 : 1));
+    return count * (JUZ_PAGES / 2);
+  }
+
   const surah = SURAHS.find((item) => clean.includes(item.name));
   if (!surah) return 0;
-  const numbers = (clean.match(/\d+/g) ?? []).map(Number).filter((value) => value >= 1);
-  if (clean.includes("كامل") || numbers.length === 0) return pagesForRange(surah.number, 1, surah.ayahs);
-  const from = Math.min(numbers[0] ?? 1, surah.ayahs);
-  const to = Math.min(numbers[1] ?? from, surah.ayahs);
+  const ayahNumbers = numbers.filter((value) => Number.isInteger(value));
+  if (clean.includes("كامل") || ayahNumbers.length === 0) return pagesForRange(surah.number, 1, surah.ayahs);
+  const from = Math.min(ayahNumbers[0] ?? 1, surah.ayahs);
+  const to = Math.min(ayahNumbers[1] ?? from, surah.ayahs);
   return pagesForRange(surah.number, from, to);
 }
 
