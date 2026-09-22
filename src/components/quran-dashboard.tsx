@@ -306,18 +306,6 @@ export function QuranDashboard({ initialData }: Props) {
           <div className="px-5 py-5">
             <label htmlFor="cell-value" className="mb-2 block text-sm text-muted-foreground">{editing?.label}</label>
             {editing && editing.columnIndex >= 2 && editing.columnIndex <= 6 && <QuranRangePicker onInsert={setEditValue} />}
-            {editing?.columnIndex === 8 && (() => {
-              const weeks = completedWeeks(editing.rowIndex);
-              return (
-                <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-line bg-note p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-black">حساب تلقائي</p>
-                    <p className="text-xs text-muted-foreground">اكتمل {arabicDigits(weeks)} من {arabicDigits(5)} أسابيع لهذا الطالب</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setEditValue(`${arabicDigits(weeks)}/${arabicDigits(5)}`)}><Calculator /> احسب</Button>
-                </div>
-              );
-            })()}
             <Textarea id="cell-value" value={editValue} onChange={(event) => setEditValue(event.target.value)} className="min-h-28 resize-none bg-background text-base" autoFocus />
             {saveError && <p className="mt-3 text-sm text-destructive" role="alert">{saveError}</p>}
           </div>
