@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { addQuranStudentRow, getQuranSheet, saveQuranStudentPhoto } from "@/lib/quran-sheet.functions";
-import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT } from "@/lib/attendance";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, TOTAL_COLUMN } from "@/lib/attendance";
 
 async function readPhoto(file: File) {
   if (!file.type.startsWith("image/")) throw new Error("اختر ملف صورة");
@@ -229,7 +229,7 @@ function NewStudentPage() {
             <div className="grid gap-5 sm:grid-cols-2">
               {labels.slice(1).map((label, offset) => {
                 const index = offset + 1;
-                if (index === ATTENDANCE_COLUMN) return null;
+                if (index === ATTENDANCE_COLUMN || index === TOTAL_COLUMN) return null;
                 const isName = index === 1;
                 const isNote = index === 9;
                 return (

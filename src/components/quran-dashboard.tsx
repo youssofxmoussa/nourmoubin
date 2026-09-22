@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Award,
   BookOpenText,
-  Calculator,
   Check,
   ChevronDown,
   CirclePlus,
@@ -46,7 +45,7 @@ import {
 import { exportTableToPdf, printCertificate, printStudentCard } from "@/lib/export-table-pdf";
 import { QuranRangePicker } from "@/components/quran-picker";
 import { arabicDigits } from "@/lib/quran-surahs";
-import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, TOTAL_COLUMN, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
 import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
@@ -112,7 +111,11 @@ export function QuranDashboard({ initialData }: Props) {
   const headings = values[0]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
   const subheadings = values[1]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
   const labels = Array.from({ length: TABLE_COLUMN_COUNT }, (_, index) =>
-    index === ATTENDANCE_COLUMN ? "الحضور" : headings[index] || subheadings[index] || `عمود ${index + 1}`,
+    index === ATTENDANCE_COLUMN
+      ? "الحضور"
+      : index === TOTAL_COLUMN
+        ? "المجموع (صفحات)"
+        : headings[index] || subheadings[index] || `عمود ${index + 1}`,
   );
   const rows = useMemo(() => {
     const all = values
@@ -124,10 +127,11 @@ export function QuranDashboard({ initialData }: Props) {
   }, [values, query]);
 
   const attendanceStats = useMemo(() => {
-    if (!rows.length) return { average: 0, full: 0 };
+    if (!rows.length) return { attended: 0, expected: 5, full: 0 };
     const all = rows.map(({ row }) => calculateAttendance(row));
-    const average = Math.round(all.reduce((sum, item) => sum + item.percentage, 0) / all.length);
-    return { average, full: all.filter((item) => item.complete).length };
+    const attended = Math.round(all.reduce((sum, item) => sum + item.attended, 0) / all.length);
+    const expected = Math.max(...all.map((item) => item.expected));
+    return { attended, expected, full: all.filter((item) => item.complete).length };
   }, [rows]);
 
   async function chooseSheet(sheet: string) {
@@ -162,7 +166,7 @@ export function QuranDashboard({ initialData }: Props) {
   }
 
   function openEditor(rowIndex: number, columnIndex: number, value: string, student: string) {
-    if (columnIndex === ATTENDANCE_COLUMN) return;
+    if (columnIndex === ATTENDANCE_COLUMN || columnIndex === TOTAL_COLUMN) return;
     setEditing({ rowIndex, columnIndex, value, student, label: labels[columnIndex] ?? `عمود ${columnIndex + 1}` });
     setEditValue(value);
     setSaveError("");
@@ -212,10 +216,6 @@ export function QuranDashboard({ initialData }: Props) {
     });
   }
 
-  function completedWeeks(rowIndex: number) {
-    const row = data.values[rowIndex + 2] ?? [];
-    return [2, 3, 4, 5, 6].filter((column) => String(row[column] ?? "").trim()).length;
-  }
 
   async function printCertificateFor(student: StudentRow) {
     const photo = data.photos?.[student.sourceIndex + 3];
@@ -293,7 +293,7 @@ export function QuranDashboard({ initialData }: Props) {
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="hidden sm:inline">•</span><span>متوسط الحضور {arabicDigits(attendanceStats.average)}٪ • حضور كامل {arabicDigits(attendanceStats.full)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
+             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="hidden sm:inline">•</span><span>متوسط الحضور {arabicDigits(attendanceStats.attended)}/{arabicDigits(attendanceStats.expected)} • حضور كامل {arabicDigits(attendanceStats.full)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
              <Button variant="outline" onClick={exportPdf} disabled={!rows.length} className="w-full sm:w-auto"><FileDown /> تصدير الجدول PDF</Button>
            </footer>
 
@@ -309,18 +309,6 @@ export function QuranDashboard({ initialData }: Props) {
           <div className="px-5 py-5">
             <label htmlFor="cell-value" className="mb-2 block text-sm text-muted-foreground">{editing?.label}</label>
             {editing && editing.columnIndex >= 2 && editing.columnIndex <= 6 && <QuranRangePicker onInsert={setEditValue} />}
-            {editing?.columnIndex === 8 && (() => {
-              const weeks = completedWeeks(editing.rowIndex);
-              return (
-                <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-line bg-note p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-black">حساب تلقائي</p>
-                    <p className="text-xs text-muted-foreground">اكتمل {arabicDigits(weeks)} من {arabicDigits(5)} أسابيع لهذا الطالب</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setEditValue(`${arabicDigits(weeks)}/${arabicDigits(5)}`)}><Calculator /> احسب</Button>
-                </div>
-              );
-            })()}
             <Textarea id="cell-value" value={editValue} onChange={(event) => setEditValue(event.target.value)} className="min-h-28 resize-none bg-background text-base" autoFocus />
             {saveError && <p className="mt-3 text-sm text-destructive" role="alert">{saveError}</p>}
           </div>
