@@ -124,24 +124,26 @@ export const updateQuranCell = createServerFn({ method: "POST" })
     });
     cache.clear();
 
-    // خانات التسميع (C..G) تعيد حساب عمود الحضور (H) تلقائياً.
+    // خانات التسميع (C..G) تعيد حساب عمودي الحضور (H) والمجموع (I) تلقائياً.
     const parsed = /^([A-Z])(\d+)$/.exec(data.cell);
     const column = parsed?.[1] ?? "";
     const rowNumber = Number(parsed?.[2] ?? 0);
     let attendance: string | null = null;
+    let total: string | null = null;
     if (rowNumber >= 3 && ["C", "D", "E", "F", "G"].includes(column)) {
       const rowRange = `${quoteSheet(data.sheet)}!A${rowNumber}:J${rowNumber}`;
       const rowData = (await request(`/spreadsheets/${SPREADSHEET_ID}/values/${rowRange}`)) as { values?: string[][] };
       const row = withCalculatedAttendance(rowData.values?.[0] ?? []);
       attendance = row[7] ?? "";
-      const attendanceRange = `${quoteSheet(data.sheet)}!H${rowNumber}`;
-      await request(`/spreadsheets/${SPREADSHEET_ID}/values/${attendanceRange}?valueInputOption=USER_ENTERED`, {
+      total = row[8] ?? "";
+      const computedRange = `${quoteSheet(data.sheet)}!H${rowNumber}:I${rowNumber}`;
+      await request(`/spreadsheets/${SPREADSHEET_ID}/values/${computedRange}?valueInputOption=USER_ENTERED`, {
         method: "PUT",
-        body: JSON.stringify({ range: attendanceRange, majorDimension: "ROWS", values: [[attendance]] }),
+        body: JSON.stringify({ range: computedRange, majorDimension: "ROWS", values: [[attendance, total]] }),
       });
       cache.clear();
     }
-    return { ok: true, attendance };
+    return { ok: true, attendance, total };
   });
 
 export const deleteQuranStudentRow = createServerFn({ method: "POST" })
