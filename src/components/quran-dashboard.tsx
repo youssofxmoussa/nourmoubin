@@ -4,7 +4,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   Award,
   BookOpenText,
-  Calculator,
   Check,
   ChevronDown,
   CirclePlus,
@@ -46,7 +45,7 @@ import {
 import { exportTableToPdf, printCertificate, printStudentCard } from "@/lib/export-table-pdf";
 import { QuranRangePicker } from "@/components/quran-picker";
 import { arabicDigits } from "@/lib/quran-surahs";
-import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, TOTAL_COLUMN, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
 import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
@@ -294,7 +293,7 @@ export function QuranDashboard({ initialData }: Props) {
             {!rows.length && <div className="grid min-h-80 place-items-center px-5 text-center"><div><Sparkles className="mx-auto mb-3 text-primary" /><p className="font-black">{query ? "لا توجد نتائج" : "ابدأ بإضافة أول طالب"}</p><p className="mt-1 text-sm text-muted-foreground">{query ? "جرّب عبارة بحث أخرى." : "لن يظهر أي طالب قبل كتابة اسمه وحفظه."}</p>{!query && <Button asChild className="mt-5"><Link to="/students/new" search={{ sheet: data.activeSheet || undefined }}><CirclePlus /> إضافة طالب</Link></Button>}</div></div>}
           </div>
            <footer className="mt-4 flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="hidden sm:inline">•</span><span>متوسط الحضور {arabicDigits(attendanceStats.average)}٪ • حضور كامل {arabicDigits(attendanceStats.full)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
+             <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground sm:justify-start"><span>{formatStudentCount(rows.length)}</span><span className="hidden sm:inline">•</span><span>متوسط الحضور {arabicDigits(attendanceStats.attended)}/{arabicDigits(attendanceStats.expected)} • حضور كامل {arabicDigits(attendanceStats.full)}</span><span className="flex items-center gap-1">التعديلات تحفظ مباشرةً <ChevronDown className="size-3" /></span></div>
              <Button variant="outline" onClick={exportPdf} disabled={!rows.length} className="w-full sm:w-auto"><FileDown /> تصدير الجدول PDF</Button>
            </footer>
 
