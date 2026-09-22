@@ -112,7 +112,11 @@ export function QuranDashboard({ initialData }: Props) {
   const headings = values[0]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
   const subheadings = values[1]?.slice(0, TABLE_COLUMN_COUNT) ?? [];
   const labels = Array.from({ length: TABLE_COLUMN_COUNT }, (_, index) =>
-    index === ATTENDANCE_COLUMN ? "الحضور" : headings[index] || subheadings[index] || `عمود ${index + 1}`,
+    index === ATTENDANCE_COLUMN
+      ? "الحضور"
+      : index === TOTAL_COLUMN
+        ? "المجموع (صفحات)"
+        : headings[index] || subheadings[index] || `عمود ${index + 1}`,
   );
   const rows = useMemo(() => {
     const all = values
