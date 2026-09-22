@@ -124,10 +124,11 @@ export function QuranDashboard({ initialData }: Props) {
   }, [values, query]);
 
   const attendanceStats = useMemo(() => {
-    if (!rows.length) return { average: 0, full: 0 };
+    if (!rows.length) return { attended: 0, expected: 5, full: 0 };
     const all = rows.map(({ row }) => calculateAttendance(row));
-    const average = Math.round(all.reduce((sum, item) => sum + item.percentage, 0) / all.length);
-    return { average, full: all.filter((item) => item.complete).length };
+    const attended = Math.round(all.reduce((sum, item) => sum + item.attended, 0) / all.length);
+    const expected = Math.max(...all.map((item) => item.expected));
+    return { attended, expected, full: all.filter((item) => item.complete).length };
   }, [rows]);
 
   async function chooseSheet(sheet: string) {
@@ -162,7 +163,7 @@ export function QuranDashboard({ initialData }: Props) {
   }
 
   function openEditor(rowIndex: number, columnIndex: number, value: string, student: string) {
-    if (columnIndex === ATTENDANCE_COLUMN) return;
+    if (columnIndex === ATTENDANCE_COLUMN || columnIndex === TOTAL_COLUMN) return;
     setEditing({ rowIndex, columnIndex, value, student, label: labels[columnIndex] ?? `عمود ${columnIndex + 1}` });
     setEditValue(value);
     setSaveError("");
@@ -212,10 +213,6 @@ export function QuranDashboard({ initialData }: Props) {
     });
   }
 
-  function completedWeeks(rowIndex: number) {
-    const row = data.values[rowIndex + 2] ?? [];
-    return [2, 3, 4, 5, 6].filter((column) => String(row[column] ?? "").trim()).length;
-  }
 
   async function printCertificateFor(student: StudentRow) {
     const photo = data.photos?.[student.sourceIndex + 3];
