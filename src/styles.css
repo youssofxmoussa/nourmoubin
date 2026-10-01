@@ -2,12 +2,11 @@
 @source "../src";
 @import "tw-animate-css";
 
-@font-face {
-  font-family: "Thmanyah";
-  src: url("/__l5e/assets-v1/29e4c353-d377-469e-b18a-5d9316313f4d/thmanyahsans-Black.otf") format("opentype");
-  font-display: swap;
-  font-weight: 900;
-}
+@font-face { font-family: "Thmanyah"; src: url("/__l5e/assets-v1/99446b25-0fe8-41a8-be8c-ccebb47eb890/thmanyahsans-Light.woff2") format("woff2"); font-display: swap; font-weight: 300; }
+@font-face { font-family: "Thmanyah"; src: url("/__l5e/assets-v1/4489f5f3-ec6b-4cae-bd22-6f6ddf9ad13f/thmanyahsans-Regular.woff2") format("woff2"); font-display: swap; font-weight: 400; }
+@font-face { font-family: "Thmanyah"; src: url("/__l5e/assets-v1/6b37f890-4cb6-46c7-88ab-8eeafc6f4b74/thmanyahsans-Medium.woff2") format("woff2"); font-display: swap; font-weight: 500; }
+@font-face { font-family: "Thmanyah"; src: url("/__l5e/assets-v1/9d508d2f-71f8-4a30-addf-b645aaf8befe/thmanyahsans-Bold.woff2") format("woff2"); font-display: swap; font-weight: 600 700; }
+@font-face { font-family: "Thmanyah"; src: url("/__l5e/assets-v1/4a759643-b6cd-4842-bd52-cfb658090112/thmanyahsans-Black.woff2") format("woff2"); font-display: swap; font-weight: 800 900; }
 
 @custom-variant dark (&:is(.dark *));
 
