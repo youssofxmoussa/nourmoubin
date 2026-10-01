@@ -174,7 +174,7 @@ function NewStudentPage() {
             </span>
             <div className="min-w-0">
               <p className="text-xs text-muted-foreground">سجل طلاب القرآن</p>
-              <h1 className="truncate text-2xl font-black sm:text-3xl">إضافة طالب جديد</h1>
+              <h1 className="truncate text-2xl font-bold sm:text-3xl">إضافة طالب جديد</h1>
             </div>
           </div>
           <Button variant="outline" size="icon" asChild>
@@ -189,7 +189,7 @@ function NewStudentPage() {
             <span className="mx-auto grid size-14 place-items-center rounded-full bg-note text-primary">
               <UserRoundPlus className="size-7" aria-hidden="true" />
             </span>
-            <h2 id="new-student-title" className="mt-4 text-2xl font-black">بيانات الطالب</h2>
+            <h2 id="new-student-title" className="mt-4 text-2xl font-bold">بيانات الطالب</h2>
             <p className="mt-1 text-sm text-muted-foreground">الاسم مطلوب، وباقي التفاصيل يمكنك إكمالها الآن أو لاحقاً.</p>
           </div>
 
@@ -201,7 +201,7 @@ function NewStudentPage() {
                   {photo ? <img src={photo} alt="معاينة صورة الطالب" className="h-full w-full object-cover" /> : <UserRoundPlus className="size-10 text-primary" aria-hidden="true" />}
                 </div>
                 <div className="flex-1 text-center sm:text-right">
-                  <p className="font-black">أضف صورة واضحة للطالب</p>
+                  <p className="font-bold">أضف صورة واضحة للطالب</p>
                   <p className="mt-1 text-xs leading-6 text-muted-foreground">يمكنك التقاطها الآن بالموبايل أو اختيارها من الصور. الصورة تظهر في الموقع فقط.</p>
                   <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
                     <Button type="button" variant="outline" onClick={() => cameraInput.current?.click()} disabled={photoBusy}><Camera /> تصوير الطالب</Button>
@@ -274,7 +274,7 @@ function NewStudentPage() {
         </section>
       </div>
       <Dialog open={Boolean(cropSource)} onOpenChange={(open) => { if (!open && !photoBusy) setCropSource(""); }}>
-        <DialogContent dir="rtl" className="w-[calc(100%-2rem)] sm:max-w-md">
+        <DialogContent dir="rtl" className="max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>ضبط صورة الطالب</DialogTitle>
             <DialogDescription>كبّر الصورة وحرّكها حتى يظهر الوجه داخل الإطار الدائري.</DialogDescription>
