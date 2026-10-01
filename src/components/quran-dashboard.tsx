@@ -302,7 +302,7 @@ export function QuranDashboard({ initialData }: Props) {
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => { if (!open && !loading) setEditing(null); }}>
         <DialogContent dir="rtl" className="max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto rounded-lg border-border bg-paper p-0 sm:max-w-lg">
-          <DialogHeader className="border-b border-line bg-note px-5 py-4 text-right sm:text-right">
+          <DialogHeader className="border-b border-line bg-note py-4 ps-5 pe-12 text-right sm:text-right">
             <DialogTitle className="text-xl font-bold">تعديل {editing?.label}</DialogTitle>
             <DialogDescription>{editing?.student ? `الطالب: ${editing.student}` : "عدّل القيمة ثم احفظها."}</DialogDescription>
           </DialogHeader>
