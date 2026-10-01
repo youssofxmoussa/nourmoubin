@@ -274,7 +274,7 @@ function NewStudentPage() {
         </section>
       </div>
       <Dialog open={Boolean(cropSource)} onOpenChange={(open) => { if (!open && !photoBusy) setCropSource(""); }}>
-        <DialogContent dir="rtl" className="w-[calc(100%-2rem)] sm:max-w-md">
+        <DialogContent dir="rtl" className="max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto sm:max-w-md">
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>ضبط صورة الطالب</DialogTitle>
             <DialogDescription>كبّر الصورة وحرّكها حتى يظهر الوجه داخل الإطار الدائري.</DialogDescription>
