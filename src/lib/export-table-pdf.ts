@@ -86,7 +86,7 @@ export async function printCertificate({ title, sheet, row, photo }: Certificate
 .photo{width:56mm;height:56mm;border-radius:50%;object-fit:cover;border:2mm solid #c9a24b;box-shadow:0 0 0 1.4mm #e6f3e8}
 .photo.fallback{display:grid;place-items:center;font-size:44pt;color:#357d63;background:#f2dfad}
 .grant{margin-top:8mm;font-size:13pt;color:#756e64}
-.name{margin-top:3mm;font-size:34pt;color:#35312b;border-bottom:.8mm solid #357d63;padding:0 12mm 3mm}
+.name{margin-top:3mm;font-size:clamp(18pt,calc(60mm / var(--len,10) * 2.2),34pt);max-width:150mm;overflow-wrap:anywhere;text-align:center;color:#35312b;border-bottom:.8mm solid #357d63;padding:0 12mm 3mm}
 .body{margin-top:8mm;max-width:130mm;font-size:13pt;line-height:2.1;color:#4a443c}
 .chips{margin-top:9mm;display:flex;gap:6mm;justify-content:center;flex-wrap:wrap}
 .chip{min-width:52mm;border:.6mm solid #357d63;border-radius:4mm;background:#e6f3e8;padding:4mm 6mm}
