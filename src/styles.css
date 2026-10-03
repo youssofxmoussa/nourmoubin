@@ -76,54 +76,64 @@
   --color-cell-memorization: var(--cell-memorization);
   --color-cell-total: var(--cell-total);
   --color-cell-notes: var(--cell-notes);
+  --color-attendance: var(--attendance);
+  --color-attendance-soft: var(--attendance-soft);
+  --color-reward: var(--reward);
+  --color-reward-soft: var(--reward-soft);
   --font-sans: "Thmanyah", "Tahoma", sans-serif;
 }
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.975 0.012 93);
-  --foreground: oklch(0.24 0.025 65);
-  --card: oklch(0.995 0.006 92);
-  --card-foreground: oklch(0.24 0.025 65);
-  --popover: oklch(0.995 0.006 92);
-  --popover-foreground: oklch(0.24 0.025 65);
-  --primary: oklch(0.48 0.105 164);
-  --primary-foreground: oklch(0.99 0.005 92);
-  --secondary: oklch(0.9 0.045 91);
-  --secondary-foreground: oklch(0.3 0.04 70);
-  --muted: oklch(0.94 0.015 88);
-  --muted-foreground: oklch(0.52 0.025 65);
-  --accent: oklch(0.91 0.07 80);
-  --accent-foreground: oklch(0.3 0.04 70);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.86 0.025 85);
-  --input: oklch(0.86 0.025 85);
-  --ring: oklch(0.48 0.105 164);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.95 0.025 89);
-  --sidebar-foreground: oklch(0.24 0.025 65);
-  --sidebar-primary: oklch(0.48 0.105 164);
-  --sidebar-primary-foreground: oklch(0.99 0.005 92);
-  --sidebar-accent: oklch(0.9 0.045 91);
-  --sidebar-accent-foreground: oklch(0.3 0.04 70);
-  --sidebar-border: oklch(0.84 0.035 86);
-  --sidebar-ring: oklch(0.48 0.105 164);
-  --paper: oklch(0.995 0.006 92);
-  --note: oklch(0.94 0.055 88);
-  --line: oklch(0.88 0.028 88);
-  --success: oklch(0.55 0.13 160);
-  --focus: oklch(0.95 0.045 160);
-  --overlay: oklch(0.2 0.02 65 / 0.28);
-  --cell-number: oklch(0.925 0.075 84);
-  --cell-name: oklch(0.965 0.018 92);
-  --cell-memorization: oklch(0.955 0.035 158);
-  --cell-total: oklch(0.955 0.035 158);
-  --cell-notes: oklch(0.955 0.035 158);
+  --background: oklch(0.99 0.003 170);
+  --foreground: oklch(0.23 0.022 170);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: oklch(0.46 0.108 165);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.96 0.012 165);
+  --secondary-foreground: var(--primary);
+  --muted: oklch(0.97 0.005 170);
+  --muted-foreground: oklch(0.56 0.014 180);
+  --accent: oklch(0.94 0.026 163);
+  --accent-foreground: var(--primary);
+  --destructive: oklch(0.62 0.19 24);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.92 0.008 165);
+  --input: oklch(0.88 0.01 170);
+  --ring: var(--primary);
+  --sidebar: oklch(0.985 0.004 170);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--primary);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+  --paper: var(--card);
+  --note: oklch(0.965 0.017 164);
+  --line: var(--border);
+  --success: oklch(0.60 0.16 153);
+  --focus: var(--accent);
+  --overlay: oklch(0.2 0.02 170 / 0.3);
+  --cell-number: oklch(0.975 0.033 93);
+  --cell-name: var(--card);
+  --cell-memorization: oklch(0.965 0.025 163);
+  --cell-total: var(--cell-memorization);
+  --cell-notes: var(--cell-memorization);
+  --attendance: oklch(0.55 0.15 245);
+  --attendance-soft: oklch(0.96 0.025 245);
+  --reward: oklch(0.60 0.13 86);
+  --reward-soft: oklch(0.98 0.035 93);
+  --primary-depth: oklch(0.36 0.087 166);
+  --shadow-soft: 0 3px 12px oklch(0.3 0.025 170 / 0.045);
+  --chart-1: var(--success);
+  --chart-2: var(--attendance);
+  --chart-3: var(--primary);
+  --chart-4: var(--reward);
+  --chart-5: var(--destructive);
 }
 
 .dark {
@@ -198,3 +208,152 @@
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 }
+
+/* Shared composition from the approved register and student designs. */
+.tactile-button { box-shadow: 0 3px 0 var(--primary-depth); transition: transform 150ms, box-shadow 150ms, background 150ms; }
+.tactile-button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--primary-depth); }
+.app-layout { display:flex; max-width:1680px; margin:auto; min-height:100dvh; }
+.desktop-sidebar { width:210px; flex-shrink:0; border-left:1px solid var(--border); background:var(--sidebar); }
+.workbook-sidebar { display:flex; flex-direction:column; height:100dvh; position:sticky; top:0; overflow-y:auto; padding:22px 14px; }
+.quran-brand { text-align:center; color:var(--primary); }
+.quran-brand img { width:64px; height:64px; object-fit:contain; margin:0 auto 8px; }
+.quran-brand strong { font-size:21px; font-weight:800; }
+.quran-brand p { font-size:10px; margin-top:5px; }
+.quran-brand.is-compact { display:flex; align-items:center; gap:8px; }
+.quran-brand.is-compact img { width:40px; height:40px; margin:0; }
+.quran-brand.is-compact strong { font-size:20px; }
+.sidebar-section { margin-top:30px; }
+.sidebar-section h2 { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--primary); margin:0 8px 14px; font-weight:700; }
+.sidebar-section nav { display:flex; flex-direction:column; gap:8px; }
+.month-link { justify-content:flex-start; height:42px; width:100%; padding:0 12px; font-size:12px; color:var(--muted-foreground); }
+.month-link.is-active { color:var(--primary); background:var(--accent); border-right:2px solid var(--primary); font-weight:700; }
+.sidebar-page { display:flex; align-items:center; gap:8px; padding:12px; background:var(--accent); color:var(--primary); font-size:12px; }
+.sidebar-bottom { display:flex; gap:8px; margin-top:auto; padding-top:25px; color:var(--muted-foreground); font-size:11px; }
+.register-main { min-width:0; flex:1; padding:28px; }
+.register-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.register-heading h1 { font-size:28px; font-weight:800; display:flex; align-items:center; gap:10px; }
+.register-heading p { color:var(--muted-foreground); font-size:12px; margin-top:6px; }
+.stat-strip { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:24px 0 20px; }
+.stat-item { display:flex; justify-content:center; align-items:center; gap:20px; min-height:92px; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow-soft); background:var(--paper); }
+.stat-item svg { width:35px; height:35px; filter:drop-shadow(0 3px 1px var(--border)); }
+.stat-item strong { display:block; font-size:23px; font-weight:800; }
+.stat-item small { display:block; color:var(--muted-foreground); font-size:12px; margin-top:3px; }
+.stat-item.students svg { color:var(--success); }
+.stat-item.pages svg { color:var(--reward); }
+.stat-item.attendance svg { color:var(--attendance); }
+.register-tools { display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+.register-tools .search-field { position:relative; width:290px; }
+.search-field input { height:42px; background:var(--muted); padding-right:36px; }
+.search-field svg { position:absolute; right:12px; top:13px; width:16px; height:16px; color:var(--muted-foreground); }
+.register-table { width:100%; table-layout:fixed; border-collapse:collapse; font-size:12px; }
+.register-table th { background:var(--note); color:var(--foreground); height:45px; font-weight:700; padding:8px 6px; text-align:right; }
+.register-table td { border-bottom:1px solid var(--border); padding:8px 5px; height:66px; }
+.register-table tr:last-child td { border-bottom:0; }
+.register-table .student-col { width:265px; }
+.register-table .number-col { width:48px; }
+.cell-pill { height:44px; min-height:44px; width:100%; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:5px; font-size:11px; white-space:normal; line-height:1.55; overflow:hidden; }
+.student-name { display:flex; gap:7px; align-items:center; min-width:0; }
+.student-name .name-button { height:auto; padding:0; justify-content:flex-start; white-space:normal; text-align:right; flex:1; min-width:0; line-height:1.5; font-size:12px; }
+.student-actions { display:flex; gap:2px; }
+.student-actions button { width:25px; height:27px; padding:0; border:0; box-shadow:none; }
+.student-actions svg { width:13px; height:13px; }
+.table-frame { border:1px solid var(--border); border-radius:8px; overflow:auto; background:var(--paper); box-shadow:var(--shadow-soft); position:relative; }
+.register-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:30px; font-size:12px; color:var(--muted-foreground); }
+.mobile-register-nav { display:none; }
+.student-list { display:none; }
+.student-card { border:1px solid var(--border); background:var(--paper); border-radius:8px; overflow:hidden; box-shadow:var(--shadow-soft); }
+.student-card-head { display:flex; flex-direction:row-reverse; align-items:center; gap:16px; padding:17px 15px; background:var(--note); }
+.attendance-ring { width:65px; height:65px; display:grid; place-items:center; border:5px solid var(--success); border-radius:50%; border-left-color:var(--border); flex-shrink:0; }
+.attendance-ring.is-complete { border-color:var(--success); }
+.student-card-head strong { font-size:18px; font-weight:800; }
+.student-card-head small { display:block; font-size:11px; color:var(--muted-foreground); margin-top:5px; }
+.student-card-content { padding:7px; }
+.week-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+.week-tile { min-height:54px; height:auto; display:flex; gap:8px; justify-content:flex-start; text-align:right; padding:8px; background:var(--cell-memorization); border:0; white-space:normal; }
+.week-tile:last-child { grid-column:1/-1; }
+.week-tile small { color:var(--muted-foreground); font-size:11px; display:block; }
+.week-tile strong { display:block; font-size:12px; font-weight:500; }
+.week-check { width:22px; height:22px; padding:4px; background:var(--success); color:var(--primary-foreground); border-radius:50%; flex-shrink:0; }
+.week-check.is-empty { background:var(--muted-foreground); }
+.student-summary { display:grid; grid-template-columns:1fr 1fr; margin-top:7px; background:var(--reward-soft); border-radius:8px; padding:11px 5px; }
+.student-summary > div { display:flex; justify-content:center; gap:10px; align-items:center; font-size:13px; }
+.student-summary > div + div { border-right:1px solid var(--border); }
+.student-summary small { display:block; color:var(--muted-foreground); font-size:10px; }
+.student-notes { background:var(--note); margin-top:7px; padding:10px; height:auto; min-height:40px; width:100%; justify-content:space-between; font-size:11px; white-space:normal; }
+.card-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:10px; margin-bottom:5px; }
+.card-actions button { height:38px; padding:0 5px; font-size:12px; }
+.new-student-main { flex:1; min-width:0; padding-bottom:80px; }
+.new-topbar { height:58px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:0 28px; }
+.new-topbar .quran-brand { display:none; }
+.new-student-body { padding:25px 28px; }
+.new-title { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+.new-title img { width:64px; height:64px; }
+.new-title h1 { font-size:27px; font-weight:800; }
+.new-title p { font-size:12px; color:var(--muted-foreground); margin-top:5px; }
+.new-student-columns { display:grid; grid-template-columns:minmax(275px,0.85fr) minmax(0,1.25fr); gap:22px; }
+.form-section { border:1px solid var(--border); padding:20px; }
+.form-section h2 { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:700; margin-bottom:8px; }
+.form-section h2 svg { color:var(--primary); width:18px; }
+.form-section > p { font-size:11px; color:var(--muted-foreground); margin-bottom:18px; }
+.photo-preview { width:144px; height:144px; border:8px solid var(--accent); border-radius:50%; display:grid; place-items:center; overflow:hidden; margin:20px auto 14px; background:var(--note); }
+.photo-actions { display:flex; gap:8px; justify-content:center; margin-bottom:20px; }
+.photo-actions button { flex:1; padding:0 8px; font-size:11px; }
+.student-fields { display:grid; gap:20px; padding-top:15px; border-top:1px solid var(--border); }
+.student-fields label { display:flex; align-items:center; gap:7px; }
+.student-fields input, .student-fields [role=combobox] { margin-top:8px; height:43px; background:var(--paper); width:100%; }
+.week-accordion { margin-top:7px; }
+.week-accordion-trigger { width:100%; height:43px; display:flex; justify-content:space-between; padding:0 12px; background:var(--cell-memorization); color:var(--foreground); border-radius:5px; }
+.week-accordion-trigger .week-value { font-size:11px; color:var(--muted-foreground); max-width:50%; overflow:hidden; text-overflow:ellipsis; }
+.week-accordion-content { border:1px solid var(--border); padding:14px; }
+.week-accordion-content .quran-picker { padding:0; border:0; background:transparent; margin-bottom:10px; }
+.notes-section { margin-top:22px; }
+.notes-section label { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.save-bar { position:fixed; bottom:0; left:0; right:210px; z-index:25; display:flex; flex-direction:row-reverse; gap:10px; align-items:center; padding:14px 28px; border-top:1px solid var(--border); background:var(--paper); }
+.save-bar button { min-width:90px; }
+.quran-picker { background:var(--note); }
+.picker-preview { background:var(--attendance-soft); color:var(--foreground); }
+@media(min-width:1024px) and (max-width:1300px) { .register-main { padding:22px; } .register-table .student-col { width:240px; } .register-table { font-size:11px; } }
+@media(max-width:1023px) {
+ .desktop-sidebar { display:none; }
+ .register-main { padding:16px 16px 100px; }
+ .mobile-register-nav { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
+ .register-heading h1 { font-size:23px; }
+ .register-heading p, .register-heading h1 svg { display:none; }
+ .stat-strip { gap:8px; margin:16px 0 12px; }
+ .stat-item { gap:9px; min-height:68px; padding:8px; }
+ .stat-item svg { width:25px; height:25px; }
+ .stat-item strong { font-size:19px; }
+ .stat-item small { font-size:10px; }
+ .stat-item.students { background:var(--note); }
+ .stat-item.pages { background:var(--reward-soft); }
+ .stat-item.attendance { background:var(--attendance-soft); }
+ .register-tools .search-field { width:auto; flex:1; }
+ .register-tools { margin-bottom:12px; }
+ .table-frame { display:none; }
+ .student-list { display:flex; flex-direction:column; gap:12px; }
+ .register-footer { margin-top:14px; }
+ .register-footer .export-button { position:fixed; bottom:0; left:0; right:0; z-index:20; background:var(--paper); padding:12px 16px; border-top:1px solid var(--border); }
+ .register-footer .export-button button { width:100%; height:44px; }
+ .register-footer > span { font-size:10px; }
+ .new-topbar { height:64px; padding:0 16px; }
+ .new-topbar .quran-brand { display:flex; }
+ .new-topbar .topbar-caption { display:none; }
+ .new-student-body { padding:20px 16px; }
+ .new-title { margin-bottom:18px; }
+ .new-title img { display:none; }
+ .new-title h1 { font-size:26px; }
+ .new-title p { font-size:12px; }
+ .new-student-columns { grid-template-columns:minmax(0,1fr); gap:24px; }
+ .form-section { border:0; padding:0; }
+ .information-section > h2, .information-section > p { display:none; }
+ .photo-preview { width:105px; height:105px; margin:10px auto 14px; }
+ .photo-actions button { font-size:12px; height:43px; }
+ .student-fields { border:0; padding-top:0; gap:18px; }
+ .save-bar { right:0; padding:12px 16px; }
+ .save-bar button:first-child { flex:1; }
+ .week-accordion-trigger { height:51px; border:1px solid var(--border); background:var(--paper); box-shadow:var(--shadow-soft); }
+ .week-accordion-content { display:none; }
+ .mobile-picker-dialog { top:auto; bottom:0; left:0; transform:none; width:100%; max-height:85dvh; border-radius:16px 16px 0 0; padding:18px 16px; overflow-y:auto; }
+ .mobile-picker-dialog::before { content:""; display:block; width:34px; height:4px; margin:0 auto 10px; background:var(--input); border-radius:4px; }
+}
+@media(max-width:380px) { .stat-item { gap:5px; } .stat-item svg { width:21px; height:21px; } .quran-brand.is-compact strong { font-size:18px; } }

@@ -71,7 +71,7 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
   }
 
   return (
-    <div className="mb-4 rounded-lg border border-line bg-note p-3 sm:p-4">
+    <div className="quran-picker mb-4 rounded-lg border border-line bg-note p-3 sm:p-4">
       <p className="flex items-center gap-2 text-sm font-bold">
         <BookOpenText className="size-4 text-primary" />
         اختيار من القرآن الكريم
@@ -81,12 +81,12 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
           <span className="mb-1 block text-xs font-medium text-muted-foreground">السورة</span>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <button type="button" className="flex h-11 w-full items-center gap-3 rounded-md border border-line bg-background px-3 text-right transition hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20">
+              <Button variant="outline" type="button" className="flex h-11 w-full items-center gap-3 rounded-md border border-line bg-background px-3 text-right transition hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20">
                 <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-xs font-bold text-primary">{arabicDigits(surah.number)}</span>
                 <span className="min-w-0 flex-1 truncate font-bold">سورة {surah.name}</span>
                 <span className="shrink-0 text-xs text-muted-foreground">{arabicDigits(surah.ayahs)} آية</span>
                 <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-              </button>
+              </Button>
             </PopoverTrigger>
             <PopoverContent dir="rtl" align="start" sideOffset={6} className="w-[var(--radix-popover-trigger-width)] min-w-[260px] border-line bg-paper p-0 font-sans">
               <div className="flex items-center gap-2 border-b border-line px-3">
@@ -107,7 +107,7 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
               <div ref={listRef} className="max-h-[min(18rem,45vh)] overflow-y-auto overscroll-contain p-1" role="listbox">
                 {results.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">لا توجد سورة بهذا الاسم</p>}
                 {results.map(({ item, index }, i) => (
-                  <button
+                  <Button variant="ghost"
                     type="button"
                     key={item.number}
                     data-i={i}
@@ -121,7 +121,7 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
                     <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">{arabicDigits(item.ayahs)} آية</span>
                     <Check className={`size-4 shrink-0 text-primary ${index === surahIndex ? "opacity-100" : "opacity-0"}`} />
-                  </button>
+                  </Button>
                 ))}
               </div>
             </PopoverContent>
@@ -133,7 +133,7 @@ export function QuranRangePicker({ onInsert }: { onInsert: (text: string) => voi
         </div>
       </div>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <p className="min-w-0 flex-1 rounded-md border border-line bg-background px-3 py-2 text-sm leading-relaxed">{preview}</p>
+        <p className="picker-preview min-w-0 flex-1 rounded-md border border-line px-3 py-2 text-sm leading-relaxed">{preview}</p>
         <Button type="button" size="sm" className="h-10" onClick={() => onInsert(preview)}><CornerDownLeft /> إدراج في الخانة</Button>
       </div>
     </div>
