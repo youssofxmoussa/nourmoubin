@@ -8,3 +8,6 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Share QuranBrand and WorkbookSidebar across register and student-entry pages so their visual identity and month navigation remain consistent.
+- Keep student-entry weekly memorization in desktop accordions and a mobile dialog, reusing QuranRangePicker to preserve verse validation.
