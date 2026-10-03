@@ -9,11 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
+        default: "tactile-button bg-primary text-primary-foreground hover:bg-primary/90",
         destructive: "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
           "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+        attendance: "border border-attendance/20 bg-attendance-soft text-attendance shadow-sm hover:bg-attendance/15",
+        danger: "border border-destructive/20 bg-destructive/10 text-destructive shadow-sm hover:bg-destructive/15",
+        reward: "border border-reward/20 bg-reward-soft text-reward shadow-sm hover:bg-reward/15",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
       },
