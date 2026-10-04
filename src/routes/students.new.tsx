@@ -77,7 +77,7 @@ export const Route = createFileRoute("/students/new")({
 function NewStudentPage() {
   const workbook = Route.useLoaderData();
   const isMobile = useIsMobile();
-  const [activeWeek, setActiveWeek] = useState<number | null>(null);
+  const [activeWeek, setActiveWeek] = useState<number | null>(2);
   const addStudent = useServerFn(addQuranStudentRow);
   const savePhoto = useServerFn(saveQuranStudentPhoto);
   const navigate = useNavigate();
