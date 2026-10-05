@@ -46,8 +46,12 @@ export function normalizeTotalText(text: string) {
 
 /** هل المجموع المحفوظ يدوي (مختلف عن الحساب التلقائي)؟ */
 export function isManualTotal(row: readonly string[]) {
-  const stored = normalizeTotalText(String(row[TOTAL_COLUMN] ?? ""));
-  return Boolean(stored) && stored !== totalLabel(row);
+  const raw = String(row[TOTAL_COLUMN] ?? "").trim();
+  if (!raw) return false;
+  const storedPages = parsePagesNumber(raw);
+  // القيم التلقائية القديمة كانت تُقرَّب لربع صفحة، فنعتبر أي فرق أقل من صفحة تلقائياً.
+  if (storedPages !== null) return Math.abs(storedPages - calculateTotalPages(row)) >= 1;
+  return normalizeTotalText(raw) !== totalLabel(row);
 }
 
 /** عدد الصفحات الصحيح لطالب، يحترم التعديل اليدوي. */
