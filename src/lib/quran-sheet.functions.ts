@@ -330,11 +330,15 @@ export const addQuranStudentRow = createServerFn({ method: "POST" })
     return { ok: true, ...primary, placements };
   });
 
+const placementSchema = z.object({ sheet: z.string().min(1).max(100), rowNumber: z.number().int().min(3).max(1000) });
+
+// الصورة تُرفع مرة واحدة وتُربط بالطالب في كل شهر أُضيف إليه.
 export const saveQuranStudentPhoto = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
     z.object({
       sheet: z.string().min(1).max(100),
       rowNumber: z.number().int().min(3).max(1000),
+      placements: z.array(placementSchema).max(60).optional(),
       studentName: z.string().min(1).max(500),
       imageData: z.string().max(3_000_000),
     }).parse(data),
@@ -347,32 +351,44 @@ export const saveQuranStudentPhoto = createServerFn({ method: "POST" })
     const bytes = Buffer.from(match[2], "base64");
     if (bytes.byteLength > 2_000_000) throw new Error("حجم الصورة كبير جداً");
 
+    const placements = [{ sheet: data.sheet, rowNumber: data.rowNumber }, ...(data.placements ?? [])]
+      .filter((item, index, all) => all.findIndex((other) => other.sheet === item.sheet && other.rowNumber === item.rowNumber) === index);
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error: uploadError } = await supabaseAdmin.storage
       .from("student-photos")
       .upload(path, bytes, { contentType: match[1], upsert: false });
     if (uploadError) throw uploadError;
 
-    const { data: previous } = await supabaseAdmin
-      .from("student_photos")
-      .select("storage_path")
-      .eq("sheet_name", data.sheet)
-      .eq("sheet_row", data.rowNumber)
-      .maybeSingle();
+    const previousPaths = new Set<string>();
+    for (const placement of placements) {
+      const { data: previous } = await supabaseAdmin
+        .from("student_photos")
+        .select("storage_path")
+        .eq("sheet_name", placement.sheet)
+        .eq("sheet_row", placement.rowNumber)
+        .maybeSingle();
+      if (previous?.storage_path) previousPaths.add(previous.storage_path);
+    }
     const { error: linkError } = await supabaseAdmin
       .from("student_photos")
-      .upsert({
-        sheet_name: data.sheet,
-        sheet_row: data.rowNumber,
+      .upsert(placements.map((placement) => ({
+        sheet_name: placement.sheet,
+        sheet_row: placement.rowNumber,
         student_name: data.studentName,
         storage_path: path,
-      }, { onConflict: "sheet_name,sheet_row" });
+      })), { onConflict: "sheet_name,sheet_row" });
     if (linkError) {
       await supabaseAdmin.storage.from("student-photos").remove([path]);
       throw linkError;
     }
-    if (previous?.storage_path && previous.storage_path !== path) {
-      await supabaseAdmin.storage.from("student-photos").remove([previous.storage_path]);
+    for (const oldPath of previousPaths) {
+      if (oldPath === path) continue;
+      const { count } = await supabaseAdmin
+        .from("student_photos")
+        .select("id", { count: "exact", head: true })
+        .eq("storage_path", oldPath);
+      if (!count) await supabaseAdmin.storage.from("student-photos").remove([oldPath]);
     }
     cache.clear();
     return { ok: true };
