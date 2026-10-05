@@ -1,5 +1,5 @@
 import { arabicDigits } from "@/lib/quran-surahs";
-import { pagesForText, pagesLabel } from "@/lib/quran-pages";
+import { pagesForText, pagesLabel, parsePagesNumber } from "@/lib/quran-pages";
 
 export const WEEK_COLUMNS = [2, 3, 4, 5, 6] as const;
 export const ATTENDANCE_COLUMN = 7;
@@ -27,7 +27,7 @@ export function calculateAttendance(row: readonly string[]): AttendanceStats {
   };
 }
 
-/** مجموع الصفحات المحفوظة من كل خانات التسميع. */
+/** مجموع الصفحات المحفوظة من كل خانات التسميع (قبل أخذ الجزء الصحيح). */
 export function calculateTotalPages(row: readonly string[]) {
   return WEEK_COLUMNS.reduce((sum, column) => sum + pagesForText(String(row[column] ?? "")), 0);
 }
@@ -36,9 +36,31 @@ export function totalLabel(row: readonly string[]) {
   return pagesLabel(calculateTotalPages(row));
 }
 
+/** يوحّد قيمة مكتوبة يدوياً في خانة المجموع: رقم ← «١٤٤ صفحة»، ونص حر يبقى كما هو. */
+export function normalizeTotalText(text: string) {
+  const clean = String(text ?? "").trim();
+  if (!clean) return "";
+  const pages = parsePagesNumber(clean);
+  return pages === null ? clean : pages <= 0 ? "" : pagesLabel(pages);
+}
+
+/** هل المجموع المحفوظ يدوي (مختلف عن الحساب التلقائي)؟ */
+export function isManualTotal(row: readonly string[]) {
+  const stored = normalizeTotalText(String(row[TOTAL_COLUMN] ?? ""));
+  return Boolean(stored) && stored !== totalLabel(row);
+}
+
+/** عدد الصفحات الصحيح لطالب، يحترم التعديل اليدوي. */
+export function studentPages(row: readonly string[]) {
+  const stored = String(row[TOTAL_COLUMN] ?? "").trim();
+  const manual = stored ? parsePagesNumber(stored) : null;
+  return Math.floor((manual ?? calculateTotalPages(row)) + 1e-9);
+}
+
 export function withCalculatedAttendance(row: readonly string[]) {
   const normalized = Array.from({ length: TABLE_COLUMN_COUNT }, (_, index) => String(row[index] ?? ""));
   normalized[ATTENDANCE_COLUMN] = calculateAttendance(normalized).label;
-  normalized[TOTAL_COLUMN] = totalLabel(normalized);
+  // المجموع تلقائي، إلا إذا كتبه المعلم بنفسه فيبقى رقمه.
+  normalized[TOTAL_COLUMN] = normalizeTotalText(normalized[TOTAL_COLUMN] ?? "") || totalLabel(normalized);
   return normalized;
 }
