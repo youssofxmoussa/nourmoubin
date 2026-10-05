@@ -27,7 +27,6 @@ import {
 import { QuranBrand } from "@/components/quran-brand";
 import { WorkbookSidebar } from "@/components/workbook-sidebar";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { calculateTotalPages } from "@/lib/attendance";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -54,7 +53,7 @@ import {
 import { exportTableToPdf, printCertificate, printStudentCard } from "@/lib/export-table-pdf";
 import { QuranRangePicker } from "@/components/quran-picker";
 import { arabicDigits } from "@/lib/quran-surahs";
-import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, TOTAL_COLUMN, calculateAttendance, withCalculatedAttendance } from "@/lib/attendance";
+import { ATTENDANCE_COLUMN, TABLE_COLUMN_COUNT, TOTAL_COLUMN, calculateAttendance, calculateTotalPages, isManualTotal, studentPages, withCalculatedAttendance } from "@/lib/attendance";
 import { formatStudentCount } from "@/lib/student-count";
 import {
   AlertDialog,
@@ -94,6 +93,7 @@ type EditableCell = {
   label: string;
   student: string;
   value: string;
+  autoPages?: number;
 };
 
 type StudentRow = { row: string[]; sourceIndex: number };
@@ -166,7 +166,17 @@ export function QuranDashboard({ initialData }: Props) {
     setSavingCell(cell);
     setSavedCell(null);
     try {
-      await saveCell({ data: { sheet: data.activeSheet, cell, value } });
+      const result = await saveCell({ data: { sheet: data.activeSheet, cell, value } });
+      if (result.attendance !== null || result.total !== null) {
+        setData((current) => {
+          const values = current.values.map((row) => [...row]);
+          const row = values[rowIndex + 2] ?? [];
+          if (result.attendance !== null) row[ATTENDANCE_COLUMN] = result.attendance;
+          if (result.total !== null) row[TOTAL_COLUMN] = result.total;
+          values[rowIndex + 2] = row;
+          return { ...current, values };
+        });
+      }
       setSavedCell(cell);
       window.setTimeout(() => setSavedCell((current) => (current === cell ? null : current)), 1600);
     } finally {
@@ -175,9 +185,16 @@ export function QuranDashboard({ initialData }: Props) {
   }
 
   function openEditor(rowIndex: number, columnIndex: number, value: string, student: string) {
-    if (columnIndex === ATTENDANCE_COLUMN || columnIndex === TOTAL_COLUMN) return;
+    if (columnIndex === ATTENDANCE_COLUMN) return;
     setEditing({ rowIndex, columnIndex, value, student, label: labels[columnIndex] ?? `عمود ${columnIndex + 1}` });
     setEditValue(value);
+    setSaveError("");
+  }
+
+  function openTotalEditor(rowIndex: number, row: string[]) {
+    const pages = studentPages(row);
+    setEditing({ rowIndex, columnIndex: TOTAL_COLUMN, value: String(pages), student: row[1] ?? "", label: "مجموع الصفحات", autoPages: Math.floor(calculateTotalPages(row) + 1e-9) });
+    setEditValue(arabicDigits(pages));
     setSaveError("");
   }
 
@@ -186,6 +203,10 @@ export function QuranDashboard({ initialData }: Props) {
     const isName = editing.columnIndex === 1;
     if (isName && !editValue.trim()) {
       setSaveError("لا يمكن حفظ طالب بدون اسم");
+      return;
+    }
+    if (editing.columnIndex === TOTAL_COLUMN && editValue.trim() && !/^[0-9٠-٩]+([.,٫][0-9٠-٩]+)?$/.test(editValue.trim())) {
+      setSaveError("اكتب عدد الصفحات بالأرقام فقط");
       return;
     }
     setLoading(true);
@@ -266,20 +287,21 @@ export function QuranDashboard({ initialData }: Props) {
           </header>
           <div className="stat-strip">
             <div className="stat-item students"><UsersRound /><div><strong>{arabicDigits(rows.length)}</strong><small>طلاب</small></div></div>
-            <div className="stat-item pages"><BookOpenText /><div><strong>{arabicDigits(Math.round(rows.reduce((total, { row }) => total + calculateTotalPages(row), 0) * 100) / 100)}</strong><small>صفحة</small></div></div>
+            <div className="stat-item pages"><BookOpenText /><div><strong>{arabicDigits(rows.reduce((total, { row }) => total + studentPages(row), 0))}</strong><small>صفحة</small></div></div>
             <div className="stat-item attendance"><CalendarDays /><div><strong>{arabicDigits(attendanceStats.attended)}/{arabicDigits(attendanceStats.expected)}</strong><small>الحضور</small></div></div>
           </div>
           <div className="register-tools"><div className="search-field"><Search /><Input aria-label="البحث عن طالب" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="ابحث عن طالب" /></div><DropdownMenu dir="rtl"><DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="تخصيص الأعمدة"><Columns3 /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-48">{labels.map((label, index) => <DropdownMenuCheckboxItem key={index} checked={Boolean(visible[index])} onCheckedChange={(checked) => setVisible((current) => current.map((value, itemIndex) => itemIndex === index ? Boolean(checked) : value))}>{label}</DropdownMenuCheckboxItem>)}</DropdownMenuContent></DropdownMenu><span className="mr-auto hidden text-xs text-muted-foreground lg:block">{data.activeSheet}</span></div>
           {loading && <div className="flex items-center justify-center gap-2 py-3 text-primary" role="status"><LoaderCircle className="size-4 animate-spin" /> جارٍ الحفظ…</div>}
           <div className="table-frame"><table className="register-table"><thead><tr>{labels.map((label, index) => visible[index] && <th key={index} className={index === 0 ? "number-col" : index === 1 ? "student-col" : ""}>{index === TOTAL_COLUMN ? "الصفحات" : label}</th>)}</tr></thead><tbody>{rows.map(({ row, sourceIndex }) => <tr key={sourceIndex}>{labels.map((label, columnIndex) => visible[columnIndex] && <td key={columnIndex}>
             {columnIndex === 1 ? <div className="student-name"><Avatar className="size-9 shrink-0 border-2 border-accent"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1]}`} /><AvatarFallback className="bg-note text-primary">{row[1]?.charAt(0)}</AvatarFallback></Avatar><Button variant="ghost" className="name-button" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")}><span className="line-clamp-2">{row[1]}</span></Button><div className="student-actions"><Button variant="reward" size="icon" onClick={() => printCertificateFor({ row, sourceIndex })} aria-label={`شهادة ${row[1]}`} title="شهادة"><Trophy /></Button><Button variant="ghost" size="icon" onClick={() => printCard({ row, sourceIndex })} aria-label={`طباعة بطاقة ${row[1]}`} title="طباعة بطاقة"><Printer /></Button><Button variant="danger" size="icon" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }} aria-label={`حذف ${row[1]}`} title="حذف"><Trash2 /></Button></div></div>
-            : columnIndex === ATTENDANCE_COLUMN || columnIndex === TOTAL_COLUMN ? <span className={`cell-pill font-bold ${columnIndex === ATTENDANCE_COLUMN ? "bg-attendance-soft text-attendance" : "bg-reward-soft text-reward"}`}>{row[columnIndex] || "—"}</span>
+            : columnIndex === ATTENDANCE_COLUMN ? <span className="cell-pill font-bold bg-attendance-soft text-attendance" title="يُحسب تلقائياً من خانات الأسابيع">{row[columnIndex] || "—"}</span>
+            : columnIndex === TOTAL_COLUMN ? <Button variant="ghost" className="cell-pill total-pill font-bold bg-reward-soft text-reward" onClick={() => openTotalEditor(sourceIndex, row)} aria-label={`تعديل مجموع صفحات ${row[1]}`} title={isManualTotal(row) ? "مجموع معدّل يدوياً" : "محسوب تلقائياً — اضغط للتعديل"}><span className="line-clamp-2">{row[columnIndex] || "—"}</span>{isManualTotal(row) ? <Pencil className="size-3 shrink-0" /> : <Sparkles className="size-3 shrink-0 opacity-60" />}{savingCell === `I${sourceIndex + 3}` && <LoaderCircle className="size-3 animate-spin" />}</Button>
             : <Button variant="ghost" className={`cell-pill ${columnIndex === 0 ? "bg-cell-number text-reward" : columnIndex === 9 ? "" : "bg-cell-memorization text-primary"}`} onClick={() => openEditor(sourceIndex, columnIndex, row[columnIndex] ?? "", row[1] ?? "")} aria-label={`تعديل ${label} للطالب ${row[1]}`}><span className="line-clamp-2">{row[columnIndex] || "—"}</span>{savingCell === `${columnLetter(columnIndex)}${sourceIndex + 3}` && <LoaderCircle className="size-3 animate-spin" />}</Button>}
           </td>)}</tr>)}</tbody></table></div>
           <div className="student-list">{rows.map(({ row, sourceIndex }) => { const attendance = calculateAttendance(row); return <article key={sourceIndex} className="student-card">
             <div className="student-card-head"><div className={`attendance-ring ${attendance.complete ? "is-complete" : ""}`}><Avatar className="size-full"><AvatarImage src={data.photos?.[sourceIndex + 3]} alt={`صورة ${row[1]}`} className="object-cover" /><AvatarFallback className="bg-accent text-primary text-xl">{row[1]?.charAt(0)}</AvatarFallback></Avatar></div><div className="min-w-0 flex-1"><strong className="flex items-center gap-2"><span className="line-clamp-2">{row[1]}</span><BookOpenText className="size-5 shrink-0 text-reward" /></strong><small>{attendance.complete ? "حضور كامل" : `الحضور ${attendance.label}`}</small></div><Button variant="ghost" size="icon" onClick={() => openEditor(sourceIndex, 1, row[1] ?? "", row[1] ?? "")} aria-label={`تعديل اسم ${row[1]}`}><Pencil className="size-4" /></Button></div>
             <div className="student-card-content"><div className="week-grid">{[2,3,4,5,6].filter((index) => visible[index]).map((index) => <Button key={index} variant="ghost" className="week-tile" onClick={() => openEditor(sourceIndex, index, row[index] ?? "", row[1] ?? "")}><span className={`week-check ${row[index] ? "" : "is-empty"}`}>{row[index] ? <Check className="size-full" /> : <Minus className="size-full" />}</span><span className="min-w-0"><small>الأسبوع {arabicDigits(index - 1)}</small><strong className="line-clamp-2">{row[index] || "—"}</strong></span></Button>)}</div>
-            <div className="student-summary">{visible[7] && <div><CalendarDays className="size-5 text-attendance" /><span><strong>{attendance.label}</strong><small>الحضور</small></span></div>}{visible[8] && <div><BookOpenText className="size-5 text-reward" /><span><strong>{row[8]}</strong><small>المحفوظ</small></span></div>}</div>
+            <div className="student-summary">{visible[7] && <div><CalendarDays className="size-5 text-attendance" /><span><strong>{attendance.label}</strong><small>الحضور</small></span></div>}{visible[8] && <Button variant="ghost" className="summary-button" onClick={() => openTotalEditor(sourceIndex, row)} aria-label={`تعديل مجموع صفحات ${row[1]}`}><BookOpenText className="size-5 text-reward" /><span><strong>{row[8] || "—"}</strong><small className="flex items-center gap-1">المحفوظ {isManualTotal(row) ? <Pencil className="size-3" /> : <Sparkles className="size-3" />}</small></span></Button>}</div>
             {visible[9] && <Button variant="ghost" className="student-notes" onClick={() => openEditor(sourceIndex, 9, row[9] ?? "", row[1] ?? "")}><span className="flex items-center gap-1"><MessageSquare className="size-4 text-primary" /> ملاحظات</span><span className="line-clamp-2">{row[9] || "—"}</span></Button>}
             <div className="card-actions"><Button onClick={() => printCertificateFor({ row, sourceIndex })}><Trophy /> شهادة</Button><Button variant="attendance" onClick={() => printCard({ row, sourceIndex })}><Printer /> بطاقة</Button><Button variant="danger" onClick={() => { setDeleting({ row, sourceIndex }); setDeleteError(""); }}><Trash2 /> حذف</Button></div></div>
           </article>; })}</div>
@@ -297,7 +319,12 @@ export function QuranDashboard({ initialData }: Props) {
           <div className="px-5 py-5">
             <label htmlFor="cell-value" className="mb-2 block text-sm text-muted-foreground">{editing?.label}</label>
             {editing && editing.columnIndex >= 2 && editing.columnIndex <= 6 && <QuranRangePicker onInsert={setEditValue} />}
-            <Textarea id="cell-value" value={editValue} onChange={(event) => setEditValue(event.target.value)} className="min-h-28 resize-none bg-background text-base" autoFocus />
+            {editing?.columnIndex === TOTAL_COLUMN ? <div className="total-editor">
+              <div className="total-editor-field"><Input id="cell-value" type="text" inputMode="numeric" dir="rtl" value={editValue} onChange={(event) => setEditValue(event.target.value)} placeholder="عدد الصفحات" className="h-14 bg-background text-center text-2xl font-bold" autoFocus /><span>صفحة</span></div>
+              <p className="text-sm text-muted-foreground">الحساب التلقائي من خانات الأسابيع: <strong className="text-reward">{arabicDigits(editing.autoPages ?? 0)} صفحة</strong>. يظهر الرقم الصحيح فقط دون كسور.</p>
+              <Button type="button" variant="outline" onClick={() => setEditValue("")} className="w-full"><Sparkles /> العودة إلى الحساب التلقائي</Button>
+              {!editValue.trim() && <p className="text-xs text-primary">سيُحسب المجموع تلقائياً عند الحفظ.</p>}
+            </div> : <Textarea id="cell-value" value={editValue} onChange={(event) => setEditValue(event.target.value)} className="min-h-28 resize-none bg-background text-base" autoFocus />}
             {saveError && <p className="mt-3 text-sm text-destructive" role="alert">{saveError}</p>}
           </div>
           <DialogFooter className="flex-row gap-2 border-t border-line px-5 py-4 sm:justify-start sm:space-x-0">
@@ -310,7 +337,7 @@ export function QuranDashboard({ initialData }: Props) {
         <AlertDialogContent dir="rtl" className="w-[calc(100%-2rem)] sm:max-w-md">
           <AlertDialogHeader className="text-right sm:text-right">
             <AlertDialogTitle>حذف {deleting?.row[1]}؟</AlertDialogTitle>
-            <AlertDialogDescription>سيُحذف الطالب وصورته وبياناته من هذا الدفتر، ثم يعاد ترقيم الطلاب تلقائياً. لا يمكن التراجع.</AlertDialogDescription>
+            <AlertDialogDescription>سيُحذف الطالب من {data.activeSheet} وكل الأشهر التي بعده، ويبقى اسمه وبياناته في الأشهر السابقة. يعاد ترقيم الطلاب تلقائياً، ولا يمكن التراجع.</AlertDialogDescription>
           </AlertDialogHeader>
           {deleteError && <p className="text-sm text-destructive" role="alert">{deleteError}</p>}
           <AlertDialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:justify-start sm:space-x-0">
