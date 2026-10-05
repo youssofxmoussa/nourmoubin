@@ -78,16 +78,30 @@ export function pagesForText(text: string) {
   return pagesForRange(surah.number, from, to);
 }
 
-const round = (value: number) => Math.round(value * 4) / 4;
+const formatNumber = (value: number) => arabicDigits(String(value));
 
-const formatNumber = (value: number) =>
-  arabicDigits(Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0$/, "").replace(".", "\u066B"));
+/** يقرأ عدد الصفحات من نص مكتوب (أرقام مشرقية أو لاتينية، مع فاصلة عشرية). */
+export function parsePagesNumber(text: string): number | null {
+  const latin = String(text ?? "")
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/[٫,]/g, ".");
+  const match = /\d+(?:\.\d+)?/.exec(latin);
+  if (!match) {
+    if (/صفحتان|صفحتين/.test(latin)) return 2;
+    if (/صفحة واحدة/.test(latin)) return 1;
+    return null;
+  }
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : null;
+}
 
+/** المجموع يُعرض كعدد صحيح فقط (الجزء الصحيح): ١٤٤٫٥ ← ١٤٤ صفحة. */
 export function pagesLabel(pages: number) {
-  const value = round(pages);
-  if (value <= 0) return "";
+  if (!Number.isFinite(pages) || pages <= 0) return "";
+  const value = Math.floor(pages + 1e-9);
+  if (value === 0) return "أقل من صفحة";
   if (value === 1) return "صفحة واحدة";
   if (value === 2) return "صفحتان";
-  if (Number.isInteger(value) && value < 11) return `${formatNumber(value)} صفحات`;
+  if (value < 11) return `${formatNumber(value)} صفحات`;
   return `${formatNumber(value)} صفحة`;
 }
