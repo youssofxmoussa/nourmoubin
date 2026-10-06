@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import React, { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, BookOpenText, Camera, Check, ImagePlus, LoaderCircle, Move, Trash2, UserRoundPlus, ZoomIn, ChevronDown, CalendarDays, UserRound, MessageSquare } from "lucide-react";
@@ -34,25 +34,25 @@ async function readPhoto(file: File) {
   });
 }
 
+const CROP_FRAME = 240;
+
 async function cropPhoto(sourceUrl: string, zoom: number, offsetX: number, offsetY: number) {
   const source = await createImageBitmap(await (await fetch(sourceUrl)).blob());
   const outputSize = 800;
+  const ratio = outputSize / CROP_FRAME;
   const canvas = document.createElement("canvas");
   canvas.width = outputSize;
   canvas.height = outputSize;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("تعذّرت معالجة الصورة");
-  const baseScale = Math.max(outputSize / source.width, outputSize / source.height);
-  const scale = baseScale * zoom;
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, outputSize, outputSize);
+  const scale = Math.max(outputSize / source.width, outputSize / source.height) * zoom;
   const width = source.width * scale;
   const height = source.height * scale;
-  const travelX = Math.max(0, (width - outputSize) / 2);
-  const travelY = Math.max(0, (height - outputSize) / 2);
-  const x = (outputSize - width) / 2 + (offsetX / 100) * travelX;
-  const y = (outputSize - height) / 2 + (offsetY / 100) * travelY;
-  context.drawImage(source, x, y, width, height);
+  context.drawImage(source, (outputSize - width) / 2 + offsetX * ratio, (outputSize - height) / 2 + offsetY * ratio, width, height);
   source.close();
-  return canvas.toDataURL("image/jpeg", 0.78);
+  return canvas.toDataURL("image/jpeg", 0.8);
 }
 
 export const Route = createFileRoute("/students/new")({
@@ -141,11 +141,51 @@ function NewStudentPage() {
     }
   }
 
-  const cropBaseScale = Math.max(256 / cropSize.width, 256 / cropSize.height);
+  const cropBaseScale = Math.max(CROP_FRAME / cropSize.width, CROP_FRAME / cropSize.height);
   const cropWidth = cropSize.width * cropBaseScale * cropZoom;
   const cropHeight = cropSize.height * cropBaseScale * cropZoom;
-  const cropTravelX = Math.max(0, (cropWidth - 256) / 2);
-  const cropTravelY = Math.max(0, (cropHeight - 256) / 2);
+  // التحريك حرّ بكل الاتجاهات، مع إبقاء جزء من الصورة داخل الإطار.
+  const limitX = Math.max(0, (cropWidth - CROP_FRAME) / 2) + CROP_FRAME * 0.35;
+  const limitY = Math.max(0, (cropHeight - CROP_FRAME) / 2) + CROP_FRAME * 0.35;
+  const clampX = (value: number) => Math.min(limitX, Math.max(-limitX, value));
+  const clampY = (value: number) => Math.min(limitY, Math.max(-limitY, value));
+  const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const pinch = useRef<{ distance: number; zoom: number } | null>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+
+  function onCropPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.current.size === 2) {
+      const [first, second] = [...pointers.current.values()];
+      pinch.current = { distance: Math.hypot(first!.x - second!.x, first!.y - second!.y), zoom: cropZoom };
+      drag.current = null;
+    } else {
+      drag.current = { x: event.clientX, y: event.clientY, ox: cropX, oy: cropY };
+    }
+  }
+  function onCropPointerMove(event: React.PointerEvent<HTMLDivElement>) {
+    if (!pointers.current.has(event.pointerId)) return;
+    pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pinch.current && pointers.current.size === 2) {
+      const [first, second] = [...pointers.current.values()];
+      const distance = Math.hypot(first!.x - second!.x, first!.y - second!.y);
+      setCropZoom(Math.min(3, Math.max(0.5, pinch.current.zoom * (distance / pinch.current.distance))));
+      return;
+    }
+    if (!drag.current) return;
+    setCropX(clampX(drag.current.ox + event.clientX - drag.current.x));
+    setCropY(clampY(drag.current.oy + event.clientY - drag.current.y));
+  }
+  function onCropPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    pointers.current.delete(event.pointerId);
+    if (pointers.current.size < 2) pinch.current = null;
+    drag.current = null;
+  }
+  function nudge(dx: number, dy: number) {
+    setCropX((value) => clampX(value + dx));
+    setCropY((value) => clampY(value + dy));
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -163,7 +203,7 @@ function NewStudentPage() {
     try {
       const created = await addStudent({ data: { sheet, values: values.map((value) => value.trim()) } });
       if (photo) {
-        await savePhoto({ data: { sheet, rowNumber: created.rowNumber, studentName: name, imageData: photo } });
+        await savePhoto({ data: { sheet, rowNumber: created.rowNumber, placements: created.placements, studentName: name, imageData: photo } });
       }
       await navigate({ to: "/", search: { sheet } });
     } catch {
@@ -176,7 +216,7 @@ function NewStudentPage() {
     <main className="min-h-screen bg-background text-foreground" dir="rtl">
       <div className="app-layout"><aside className="desktop-sidebar"><WorkbookSidebar studentPage sheets={workbook.sheets} activeSheet={sheet} onChoose={setSheet} /></aside><div className="new-student-main">
         <header className="new-topbar"><QuranBrand compact /><span className="topbar-caption text-xs text-muted-foreground">سجل طلاب القرآن</span><Button variant="ghost" asChild><Link to="/" search={{ sheet }}><ArrowRight /> عودة</Link></Button></header>
-        <form onSubmit={submit} className="new-student-body"><div className="new-title"><img src={emblem} alt="" width={64} height={64} /><div><h1>طالب جديد</h1><p>إضافة طالب جديد إلى دفتر المتابعة</p></div></div>
+        <form onSubmit={submit} className="new-student-body"><div className="new-title"><img src={emblem} alt="" width={64} height={64} /><div><h1>طالب جديد</h1><p>يُضاف الطالب إلى الشهر المختار وكل الأشهر التي بعده، وبياناته تبقى في الشهر المختار فقط.</p></div></div>
           <div className="new-student-columns"><section className="form-section information-section"><h2><UserRound /> معلومات الطالب</h2><p>البيانات الأساسية للطالب</p><Label className="hidden text-center lg:block">صورة الطالب</Label>
             <div className="photo-preview">{photo ? <img src={photo} alt="معاينة صورة الطالب" className="size-full object-cover" /> : <UserRound className="size-12 text-primary" />}</div>
             <div className="photo-actions"><Button type="button" variant="outline" onClick={() => cameraInput.current?.click()} disabled={photoBusy}><Camera /> التقاط صورة</Button><Button type="button" variant="outline" onClick={() => fileInput.current?.click()} disabled={photoBusy}><ImagePlus /> اختيار صورة</Button>{photo && <Button type="button" variant="danger" size="icon" className="flex-none" onClick={() => setPhoto("")} aria-label="حذف الصورة"><Trash2 /></Button>}</div>
@@ -190,24 +230,37 @@ function NewStudentPage() {
         </form></div></div>
       <Dialog open={isMobile && activeWeek !== null} onOpenChange={(open) => { if (!open) setActiveWeek(null); }}><DialogContent dir="rtl" className="mobile-picker-dialog left-0 top-auto bottom-0 translate-x-0 translate-y-0 max-w-none"><DialogHeader className="text-right"><DialogTitle>تحديد الحفظ</DialogTitle><DialogDescription>الأسبوع {arabicDigits((activeWeek ?? 2) - 1)}</DialogDescription></DialogHeader><QuranRangePicker onInsert={(text) => { if (activeWeek !== null) changeValue(activeWeek, text); setActiveWeek(null); }} />{activeWeek !== null && <Input aria-label="المحفوظ" value={values[activeWeek] ?? ""} onChange={(event) => changeValue(activeWeek, event.target.value)} placeholder="المحفوظ" />}</DialogContent></Dialog>
       <Dialog open={Boolean(cropSource)} onOpenChange={(open) => { if (!open && !photoBusy) setCropSource(""); }}>
-        <DialogContent dir="rtl" className="max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto sm:max-w-md">
+        <DialogContent dir="rtl" className={isMobile ? "mobile-picker-dialog crop-dialog left-0 top-auto bottom-0 translate-x-0 translate-y-0 max-w-none gap-3" : "crop-dialog max-h-[90dvh] w-[calc(100%-1.5rem)] overflow-y-auto sm:max-w-md"}>
           <DialogHeader className="text-right sm:text-right">
             <DialogTitle>ضبط صورة الطالب</DialogTitle>
-            <DialogDescription>كبّر الصورة وحرّكها حتى يظهر الوجه داخل الإطار الدائري.</DialogDescription>
+            <DialogDescription>اسحب الصورة بإصبعك بأي اتجاه، وكبّرها أو صغّرها حتى يظهر الوجه داخل الدائرة.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-5">
-            <div className="relative mx-auto size-64 overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner">
-              {cropSource && <img src={cropSource} alt="معاينة قص صورة الطالب" className="absolute left-1/2 top-1/2 max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(calc(-50% + ${(cropX / 100) * cropTravelX}px), calc(-50% + ${(cropY / 100) * cropTravelY}px))` }} />}
+          <div className="space-y-4">
+            <div
+              className="relative mx-auto cursor-grab touch-none select-none overflow-hidden rounded-full border-4 border-primary bg-muted shadow-inner active:cursor-grabbing"
+              style={{ width: CROP_FRAME, height: CROP_FRAME }}
+              onPointerDown={onCropPointerDown}
+              onPointerMove={onCropPointerMove}
+              onPointerUp={onCropPointerUp}
+              onPointerCancel={onCropPointerUp}
+              onWheel={(event) => setCropZoom((value) => Math.min(3, Math.max(0.5, value - event.deltaY * 0.0015)))}
+              role="img"
+              aria-label="معاينة قص صورة الطالب"
+            >
+              {cropSource && <img src={cropSource} alt="" draggable={false} className="pointer-events-none absolute left-1/2 top-1/2 max-w-none" style={{ width: `${cropWidth}px`, height: `${cropHeight}px`, transform: `translate(calc(-50% + ${cropX}px), calc(-50% + ${cropY}px))` }} />}
             </div>
-            <div className="space-y-4">
-              <div><Label className="mb-2 flex items-center gap-2"><ZoomIn className="size-4" /> التكبير</Label><Slider value={[cropZoom]} min={1} max={2.5} step={0.05} onValueChange={([value]) => setCropZoom(value ?? 1)} /></div>
-              <div><Label className="mb-2 flex items-center gap-2"><Move className="size-4" /> تحريك أفقي</Label><Slider value={[cropX]} min={-100} max={100} step={1} onValueChange={([value]) => setCropX(value ?? 0)} /></div>
-              <div><Label className="mb-2 flex items-center gap-2"><Move className="size-4 rotate-90" /> تحريك عمودي</Label><Slider value={[cropY]} min={-100} max={100} step={1} onValueChange={([value]) => setCropY(value ?? 0)} /></div>
+            <div className="grid grid-cols-[auto_1fr] items-center gap-3"><Label className="flex items-center gap-2"><ZoomIn className="size-4" /> التكبير</Label><Slider value={[cropZoom]} min={0.5} max={3} step={0.02} onValueChange={([value]) => setCropZoom(value ?? 1)} /></div>
+            <div className="flex items-center justify-center gap-2"><Move className="size-4 text-muted-foreground" />
+              <Button type="button" variant="outline" size="icon" onClick={() => nudge(12, 0)} aria-label="تحريك لليمين">→</Button>
+              <Button type="button" variant="outline" size="icon" onClick={() => nudge(0, -12)} aria-label="تحريك للأعلى">↑</Button>
+              <Button type="button" variant="outline" size="icon" onClick={() => nudge(0, 12)} aria-label="تحريك للأسفل">↓</Button>
+              <Button type="button" variant="outline" size="icon" onClick={() => nudge(-12, 0)} aria-label="تحريك لليسار">←</Button>
+              <Button type="button" variant="ghost" onClick={() => { setCropZoom(1); setCropX(0); setCropY(0); }}>إعادة</Button>
             </div>
           </div>
-          <DialogFooter className="flex-row gap-2 sm:justify-start">
+          <DialogFooter className="grid grid-cols-2 gap-2 sm:flex sm:flex-row sm:justify-start sm:space-x-0">
             <Button type="button" onClick={applyCrop} disabled={photoBusy}>{photoBusy ? <LoaderCircle className="animate-spin" /> : <Check />} اعتماد الصورة</Button>
-            <Button type="button" variant="ghost" onClick={() => setCropSource("")} disabled={photoBusy}>إلغاء</Button>
+            <Button type="button" variant="outline" onClick={() => setCropSource("")} disabled={photoBusy}>إلغاء</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
